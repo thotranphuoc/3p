@@ -1,0 +1,110 @@
+<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow cursor-pointer">
+  <div class="flex items-start justify-between mb-2">
+    <h3 class="font-semibold text-gray-900 text-sm">{{ task.title }}</h3>
+    <span class="px-2 py-1 text-xs font-medium rounded-full"
+          [ngClass]="{
+            'bg-blue-100 text-blue-800': task.status === 'todo',
+            'bg-yellow-100 text-yellow-800': task.status === 'in_progress',
+            'bg-purple-100 text-purple-800': task.status === 'review',
+            'bg-green-100 text-green-800': task.status === 'done'
+          }">
+      {{ task.status.replace('_', ' ') }}
+    </span>
+  </div>
+
+  <!-- Aggregated Stats (CLIENT-SIDE COMPUTED) -->
+  <div class="space-y-2 mt-3">
+    <!-- Progress Bar -->
+    <div *ngIf="computedAggregates().total_subtasks > 0">
+      <div class="flex items-center justify-between text-xs text-gray-600 mb-1">
+        <span>Progress</span>
+        <span class="font-medium">{{ progressPercentage }}%</span>
+      </div>
+      <div class="w-full bg-gray-200 rounded-full h-2">
+        <div class="bg-blue-600 h-2 rounded-full transition-all"
+             [style.width.%]="progressPercentage"></div>
+      </div>
+      <div class="text-xs text-gray-500 mt-1">
+        {{ computedAggregates().completed_subtasks }} / {{ computedAggregates().total_subtasks }} subtasks
+      </div>
+    </div>
+
+    <!-- Time Health -->
+    <div *ngIf="computedAggregates().total_estimate_seconds > 0">
+      <div class="flex items-center justify-between text-xs mb-1">
+        <span class="text-gray-600">Time Health</span>
+        <span class="font-medium"
+              [ngClass]="{
+                'text-red-600': isTimeOverBudget,
+                'text-green-600': !isTimeOverBudget
+              }">
+          {{ timeHealthPercentage }}%
+        </span>
+      </div>
+      <div class="flex items-center gap-2 text-xs text-gray-500">
+        <span>Actual: {{ formatTime(computedAggregates().total_actual_seconds) }}</span>
+        <span>•</span>
+        <span>Estimate: {{ formatTime(computedAggregates().total_estimate_seconds) }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Subtasks Toggle -->
+  <div *ngIf="computedAggregates().total_subtasks > 0" class="mt-3 pt-3 border-t border-gray-100">
+    <button
+      (click)="toggleSubtasks(); $event.stopPropagation()"
+      class="w-full flex items-center justify-between text-xs text-gray-600 hover:text-gray-900 transition-colors">
+      <span class="font-medium">
+        {{ computedAggregates().total_subtasks }} Subtask{{ computedAggregates().total_subtasks > 1 ? 's' : '' }}
+        ({{ computedAggregates().completed_subtasks }} completed)
+      </span>
+      <svg class="w-4 h-4 transition-transform" [class.rotate-180]="showSubtasks()" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+      </svg>
+    </button>
+    
+    <!-- Subtasks List (Expandable) -->
+    <div *ngIf="showSubtasks()" class="mt-2">
+      <app-subtask-list
+        [taskId]="task.id"
+        [projectId]="projectId"
+        [subtasks]="subtasks()"
+        [showTimer]="false"
+        (subtaskUpdated)="onSubtaskUpdated()"
+        (editSubtask)="onEditSubtask($event)">
+      </app-subtask-list>
+    </div>
+  </div>
+
+  <!-- Assignees Preview -->
+  <div class="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+    <div class="flex items-center gap-1">
+      <div class="flex -space-x-2">
+        <ng-container *ngFor="let assigneeId of task.assignees_preview.slice(0, 3)">
+          <div class="w-6 h-6 rounded-full bg-gray-300 border-2 border-white flex items-center justify-center text-xs text-gray-600">
+            {{ assigneeId.charAt(0).toUpperCase() }}
+          </div>
+        </ng-container>
+      </div>
+      <span *ngIf="task.assignees_preview.length > 3" class="text-xs text-gray-500 ml-1">
+        +{{ task.assignees_preview.length - 3 }}
+      </span>
+    </div>
+    <button
+      (click)="onAddSubtask(); $event.stopPropagation()"
+      class="text-xs text-blue-600 hover:text-blue-700 font-medium"
+      title="Add Subtask">
+      + Subtask
+    </button>
+  </div>
+</div>
+
+<!-- Subtask Modal -->
+<app-subtask-modal
+  [taskId]="task.id"
+  [projectId]="projectId"
+  [subtask]="selectedSubtask()"
+  [isOpen]="showSubtaskModal()"
+  (close)="closeSubtaskModal()"
+  (saved)="onSubtaskSaved()">
+</app-subtask-modal>

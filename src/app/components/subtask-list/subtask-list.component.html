@@ -1,0 +1,58 @@
+<div class="subtask-list">
+  <div *ngIf="loading()" class="text-center py-4">
+    <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
+  </div>
+
+  <div *ngIf="!loading()">
+    <!-- Empty State -->
+    <div *ngIf="displaySubtasks().length === 0" class="text-center py-4 text-sm text-gray-500">
+      No subtasks yet
+    </div>
+
+    <!-- Subtasks List -->
+    <div *ngIf="displaySubtasks().length > 0" class="space-y-2">
+      <div
+        *ngFor="let subtask of displaySubtasks()"
+        class="group flex items-center justify-between p-2 bg-gray-50 rounded-md hover:bg-gray-100 transition-colors">
+        <div class="flex-1 cursor-pointer" (dblclick)="editSubtask.emit(subtask)">
+          <div class="flex items-center gap-2">
+            <input
+              type="checkbox"
+              [checked]="subtask.status === 'done'"
+              (change)="toggleSubtaskStatus(subtask); $event.stopPropagation()"
+              class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+            <span [class.line-through]="subtask.status === 'done'"
+                  [class.text-gray-500]="subtask.status === 'done'"
+                  class="text-sm font-medium text-gray-900">
+              {{ subtask.title }}
+            </span>
+            <button
+              type="button"
+              (click)="editSubtask.emit(subtask); $event.stopPropagation()"
+              class="ml-2 text-xs text-blue-600 hover:text-blue-700 opacity-0 group-hover:opacity-100 transition-opacity"
+              title="Edit subtask">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+              </svg>
+            </button>
+          </div>
+          <div class="flex items-center gap-3 mt-1 ml-6 text-xs text-gray-500">
+            <span>Est: {{ formatTime(subtask.estimate_seconds) }}</span>
+            <span>•</span>
+            <span>Act: {{ formatTime(subtask.actual_seconds) }}</span>
+            <span *ngIf="subtask.assignees.length > 0" class="text-gray-400">
+              • {{ subtask.assignees.length }} assignee(s)
+            </span>
+          </div>
+        </div>
+        <app-timer-button
+          *ngIf="showTimer"
+          [taskId]="taskId"
+          [subtaskId]="subtask.id"
+          [projectId]="projectId"
+          [subtaskTitle]="subtask.title">
+        </app-timer-button>
+      </div>
+    </div>
+  </div>
+</div>

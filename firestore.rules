@@ -56,13 +56,14 @@ service cloud.firestore {
       allow read, create, update, delete: if true; // Tạm thời mở cho testing
     }
 
-    match /timeLogs/{logId} {
+    match /time_logs/{logId} {
       // MỞ HOÀN TOÀN ĐỂ TEST
-      allow read, create, update: if isAuthenticated();
-      // Rule cũ:
+      allow read, create: if isAuthenticated();
+      // Không cho phép update/delete vì time_logs là immutable history (theo spec)
+      allow update, delete: if false;
+      // Rule cũ (siết lại sau khi test xong):
       // allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isProjectMember(resource.data.projectId));
       // allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      // allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
     }
   }
 }

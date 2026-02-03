@@ -1,0 +1,229 @@
+<div class="min-h-screen bg-gray-50">
+  <!-- Top Navbar -->
+  <nav class="bg-white border-b border-gray-200 px-6 py-3">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-6">
+        <h2 class="text-xl font-bold text-blue-600">ProMan</h2>
+        <a routerLink="/dashboard" class="text-gray-700 hover:text-blue-600 font-medium">Dashboard</a>
+        <a routerLink="/profile" class="text-gray-700 hover:text-blue-600 font-medium">Profile</a>
+        <a routerLink="/admin/users" class="text-blue-600 font-medium">User Management</a>
+      </div>
+      
+      <div class="flex items-center gap-4">
+        <!-- User Info -->
+        <div class="flex items-center gap-2 text-sm text-gray-600">
+          <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium">
+            {{ (authService.currentUserProfile()?.displayName?.charAt(0) || authService.currentUserProfile()?.email?.charAt(0) || 'U').toUpperCase() }}
+          </div>
+          <span>{{ authService.currentUserProfile()?.displayName || authService.currentUserProfile()?.email }}</span>
+        </div>
+        
+        <!-- Logout Button -->
+        <button
+          (click)="logout()"
+          [disabled]="loggingOut()"
+          class="px-3 py-1.5 text-sm text-gray-700 hover:text-red-600 border border-gray-300 rounded-md hover:border-red-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+          {{ loggingOut() ? 'Logging out...' : 'Logout' }}
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="p-6">
+    <div class="max-w-7xl mx-auto">
+      <!-- Header -->
+      <div class="mb-6">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">User Management</h1>
+        <p class="text-gray-600">Manage all users and their roles in the system</p>
+      </div>
+
+      <!-- Statistics Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <div class="text-sm text-gray-600 mb-1">Total Users</div>
+          <div class="text-2xl font-bold text-gray-900">{{ stats().total }}</div>
+        </div>
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <div class="text-sm text-gray-600 mb-1">Admins</div>
+          <div class="text-2xl font-bold text-red-600">{{ stats().admin }}</div>
+        </div>
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <div class="text-sm text-gray-600 mb-1">Managers</div>
+          <div class="text-2xl font-bold text-purple-600">{{ stats().manager }}</div>
+        </div>
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <div class="text-sm text-gray-600 mb-1">Members</div>
+          <div class="text-2xl font-bold text-blue-600">{{ stats().member }}</div>
+        </div>
+      </div>
+
+      <!-- Search and Filter -->
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Search -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              Search Users
+            </label>
+            <input
+              type="text"
+              [value]="searchTerm()"
+              (input)="searchTerm.set($any($event.target).value)"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Search by name or email...">
+          </div>
+
+          <!-- Role Filter -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              Filter by Role
+            </label>
+            <select
+              [value]="roleFilter()"
+              (change)="roleFilter.set($any($event.target).value)"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+              <option value="all">All Roles</option>
+              <option value="admin">Admin</option>
+              <option value="manager">Manager</option>
+              <option value="member">Member</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="mt-3 text-sm text-gray-600">
+          Showing {{ filteredUsers().length }} of {{ stats().total }} users
+        </div>
+      </div>
+
+      <!-- Loading -->
+      <div *ngIf="loading()" class="flex justify-center items-center py-12">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+
+      <!-- Users Table -->
+      <div *ngIf="!loading()" class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <tr *ngFor="let user of filteredUsers()" class="hover:bg-gray-50">
+              <!-- User Avatar & Name -->
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium">
+                    {{ ((user.displayName || user.email || 'U').charAt(0)).toUpperCase() }}
+                  </div>
+                  <div>
+                    <div class="text-sm font-medium text-gray-900">{{ user.displayName || 'No name' }}</div>
+                    <div class="text-xs text-gray-500">UID: {{ user.uid.substring(0, 8) }}...</div>
+                  </div>
+                </div>
+              </td>
+
+              <!-- Email -->
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-900">{{ user.email }}</div>
+              </td>
+
+              <!-- Role -->
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="inline-block px-2 py-1 rounded-md text-xs font-medium uppercase" [ngClass]="getRoleBadgeClass(user.role)">
+                  {{ user.role }}
+                </span>
+              </td>
+
+              <!-- Status -->
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span *ngIf="user.active_timer" class="inline-flex items-center gap-1 text-xs text-green-600">
+                  <span class="w-2 h-2 bg-green-600 rounded-full animate-pulse"></span>
+                  Timer Active
+                </span>
+                <span *ngIf="!user.active_timer" class="text-xs text-gray-500">
+                  Idle
+                </span>
+              </td>
+
+              <!-- Actions -->
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <button
+                  (click)="openEditRoleModal(user)"
+                  [disabled]="user.uid === authService.currentUserProfile()?.uid"
+                  class="text-blue-600 hover:text-blue-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                  [title]="user.uid === authService.currentUserProfile()?.uid ? 'Cannot edit your own role' : 'Change role'">
+                  Change Role
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Empty State -->
+        <div *ngIf="filteredUsers().length === 0" class="text-center py-12">
+          <p class="text-gray-600">No users found matching your criteria</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Role Modal -->
+  <div *ngIf="showEditRoleModal()" 
+       class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+       (click)="showEditRoleModal.set(false)">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6"
+         (click)="$event.stopPropagation()">
+      <h2 class="text-xl font-semibold text-gray-900 mb-4">Change User Role</h2>
+      
+      <div class="mb-4">
+        <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-md mb-4">
+          <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium">
+            {{ ((editingUser()?.displayName || editingUser()?.email || 'U').charAt(0)).toUpperCase() }}
+          </div>
+          <div>
+            <div class="text-sm font-medium text-gray-900">{{ editingUser()?.displayName || 'No name' }}</div>
+            <div class="text-xs text-gray-500">{{ editingUser()?.email }}</div>
+          </div>
+        </div>
+
+        <label class="block text-sm font-medium text-gray-700 mb-1">
+          New Role
+        </label>
+        <select
+          [value]="newRole()"
+          (change)="newRole.set($any($event.target).value)"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+          <option value="member">Member</option>
+          <option value="manager">Manager</option>
+          <option value="admin">Admin</option>
+        </select>
+
+        <div class="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+          <p class="text-xs text-yellow-800">
+            <strong>Current role:</strong> {{ editingUser()?.role }}<br>
+            <strong>New role:</strong> {{ newRole() }}
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-3">
+        <button
+          (click)="showEditRoleModal.set(false)"
+          class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+          Cancel
+        </button>
+        <button
+          (click)="saveUserRole()"
+          [disabled]="savingRole() || newRole() === editingUser()?.role"
+          class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+          {{ savingRole() ? 'Saving...' : 'Save Changes' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

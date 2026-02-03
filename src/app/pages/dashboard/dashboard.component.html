@@ -1,0 +1,295 @@
+<div class="min-h-screen bg-gray-50">
+  <!-- Top Navbar -->
+  <nav class="bg-white border-b border-gray-200 px-6 py-3">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-6">
+        <h2 class="text-xl font-bold text-blue-600">ProMan</h2>
+        <a routerLink="/dashboard" class="text-blue-600 font-medium">Dashboard</a>
+        <a routerLink="/profile" class="text-gray-700 hover:text-blue-600 font-medium">Profile</a>
+        <a *ngIf="authService.currentUserProfile()?.role === 'admin'" 
+           routerLink="/admin/users" 
+           class="text-gray-700 hover:text-blue-600 font-medium">
+          User Management
+        </a>
+      </div>
+      
+      <div class="flex items-center gap-4">
+        <!-- User Info -->
+        <div class="flex items-center gap-2 text-sm text-gray-600">
+          <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium">
+            {{ (authService.currentUserProfile()?.displayName?.charAt(0) || authService.currentUserProfile()?.email?.charAt(0) || 'U').toUpperCase() }}
+          </div>
+          <span>{{ authService.currentUserProfile()?.displayName || authService.currentUserProfile()?.email }}</span>
+        </div>
+        
+        <!-- Logout Button -->
+        <button
+          (click)="logout()"
+          [disabled]="loggingOut()"
+          class="px-3 py-1.5 text-sm text-gray-700 hover:text-red-600 border border-gray-300 rounded-md hover:border-red-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+          {{ loggingOut() ? 'Logging out...' : 'Logout' }}
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="p-6">
+    <div class="max-w-7xl mx-auto">
+      <!-- Header -->
+      <div class="flex items-center justify-between mb-6">
+        <h1 class="text-3xl font-bold text-gray-900">Projects</h1>
+        <button
+          (click)="showCreateModal.set(true)"
+          class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+          + New Project
+        </button>
+      </div>
+
+    <!-- Loading -->
+    <div *ngIf="loading()" class="flex justify-center items-center py-12">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+    </div>
+
+    <!-- Projects Grid -->
+    <div *ngIf="!loading()" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div
+        *ngFor="let project of projects()"
+        class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer relative group">
+        
+        <!-- Project Info (Clickable) -->
+        <div (click)="openProject(project.id)">
+          <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ project.name }}</h3>
+          <div class="text-sm text-gray-600">
+            <div>Tasks: {{ project.stats.total_tasks }}</div>
+            <div>Completed: {{ project.stats.completed_tasks }}</div>
+            <div>Members: {{ project.members.length }}</div>
+          </div>
+        </div>
+
+        <!-- Action Buttons (Hover) -->
+        <div class="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            (click)="openMembersModal(project, $event)"
+            class="p-2 bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 transition-colors"
+            title="Manage Members">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+            </svg>
+          </button>
+          <button
+            (click)="openEditModal(project, $event)"
+            class="p-2 bg-green-100 text-green-600 rounded-md hover:bg-green-200 transition-colors"
+            title="Edit Project">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+            </svg>
+          </button>
+          <button
+            (click)="openDeleteModal(project, $event)"
+            class="p-2 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors"
+            title="Delete Project">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+      <!-- Empty State -->
+      <div *ngIf="!loading() && projects().length === 0" class="text-center py-12">
+        <p class="text-gray-600 mb-4">No projects yet. Creating demo project...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create Project Modal -->
+  <div *ngIf="showCreateModal()" 
+       class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+       (click)="showCreateModal.set(false)">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6"
+         (click)="$event.stopPropagation()">
+      <h2 class="text-xl font-semibold text-gray-900 mb-4">Create New Project</h2>
+      
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1">
+          Project Name
+        </label>
+        <input
+          type="text"
+          [value]="newProjectName()"
+          (input)="newProjectName.set($any($event.target).value)"
+          (keyup.enter)="createProject()"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          placeholder="Enter project name">
+      </div>
+
+      <div class="flex items-center justify-end gap-3">
+        <button
+          (click)="showCreateModal.set(false)"
+          class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+          Cancel
+        </button>
+        <button
+          (click)="createProject()"
+          class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
+          Create
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Project Modal -->
+  <div *ngIf="showEditModal()" 
+       class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+       (click)="showEditModal.set(false)">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6"
+         (click)="$event.stopPropagation()">
+      <h2 class="text-xl font-semibold text-gray-900 mb-4">Edit Project</h2>
+      
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1">
+          Project Name
+        </label>
+        <input
+          type="text"
+          [value]="editProjectName()"
+          (input)="editProjectName.set($any($event.target).value)"
+          (keyup.enter)="updateProject()"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          placeholder="Enter project name">
+      </div>
+
+      <div class="flex items-center justify-end gap-3">
+        <button
+          (click)="showEditModal.set(false)"
+          class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+          Cancel
+        </button>
+        <button
+          (click)="updateProject()"
+          class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700">
+          Save Changes
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div *ngIf="showDeleteModal()" 
+       class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+       (click)="showDeleteModal.set(false)">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6"
+         (click)="$event.stopPropagation()">
+      <h2 class="text-xl font-semibold text-gray-900 mb-4">Delete Project</h2>
+      
+      <p class="text-gray-700 mb-6">
+        Are you sure you want to delete "<strong>{{ deletingProject()?.name }}</strong>"?
+        This action cannot be undone. All tasks and data will be permanently deleted.
+      </p>
+
+      <div class="flex items-center justify-end gap-3">
+        <button
+          (click)="showDeleteModal.set(false)"
+          class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+          Cancel
+        </button>
+        <button
+          (click)="deleteProject()"
+          class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">
+          Delete Project
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Manage Members Modal -->
+  <div *ngIf="showMembersModal()" 
+       class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+       (click)="showMembersModal.set(false)">
+    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 p-6 max-h-[80vh] overflow-y-auto"
+         (click)="$event.stopPropagation()">
+      <h2 class="text-xl font-semibold text-gray-900 mb-4">Manage Members</h2>
+      <p class="text-sm text-gray-600 mb-6">Project: <strong>{{ managingProject()?.name }}</strong></p>
+      
+      <!-- Add Member Section -->
+      <div class="mb-6 pb-6 border-b border-gray-200">
+        <h3 class="text-sm font-medium text-gray-900 mb-3">Add New Member</h3>
+        <div class="flex gap-2">
+          <input
+            type="email"
+            [value]="searchEmail()"
+            (input)="searchEmail.set($any($event.target).value); searchUsers()"
+            class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            placeholder="Search by email...">
+        </div>
+        
+        <!-- Search Results -->
+        <div *ngIf="searchResults().length > 0" class="mt-3 space-y-2">
+          <div
+            *ngFor="let user of searchResults()"
+            class="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium">
+                {{ ((user.displayName || user.email || 'U').charAt(0)).toUpperCase() }}
+              </div>
+              <div>
+                <div class="text-sm font-medium text-gray-900">{{ user.displayName || 'No name' }}</div>
+                <div class="text-xs text-gray-500">{{ user.email }}</div>
+              </div>
+            </div>
+            <button
+              (click)="addMember(user)"
+              [disabled]="addingMember()"
+              class="px-3 py-1 text-sm text-blue-600 border border-blue-600 rounded-md hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed">
+              {{ addingMember() ? 'Adding...' : 'Add' }}
+            </button>
+          </div>
+        </div>
+        
+        <div *ngIf="searchEmail().length >= 3 && searchResults().length === 0" class="mt-3 text-sm text-gray-500">
+          No users found
+        </div>
+      </div>
+
+      <!-- Current Members -->
+      <div>
+        <h3 class="text-sm font-medium text-gray-900 mb-3">Current Members ({{ projectMembers().length }})</h3>
+        <div class="space-y-2">
+          <div
+            *ngFor="let member of projectMembers()"
+            class="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium">
+                {{ ((member.displayName || member.email || 'U').charAt(0)).toUpperCase() }}
+              </div>
+              <div>
+                <div class="text-sm font-medium text-gray-900">{{ member.displayName || 'No name' }}</div>
+                <div class="text-xs text-gray-500">{{ member.email }}</div>
+              </div>
+            </div>
+            <button
+              (click)="removeMember(member)"
+              [disabled]="member.uid === authService.getCurrentUser()?.uid || managingProject()?.members?.length === 1"
+              class="px-3 py-1 text-sm text-red-600 border border-red-600 rounded-md hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              [title]="member.uid === authService.getCurrentUser()?.uid ? 'Cannot remove yourself' : managingProject()?.members?.length === 1 ? 'Cannot remove last member' : 'Remove member'">
+              Remove
+            </button>
+          </div>
+        </div>
+
+        <div *ngIf="projectMembers().length === 0" class="text-sm text-gray-500 text-center py-4">
+          No members found
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 mt-6 pt-6 border-t border-gray-200">
+        <button
+          (click)="showMembersModal.set(false)"
+          class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

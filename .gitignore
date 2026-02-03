@@ -40,3 +40,23 @@ testem.log
 # System files
 .DS_Store
 Thumbs.db
+
+# Environment files with sensitive data
+/src/environments/environment.ts
+/src/environments/environment.prod.ts
+# Keep example file for reference
+!/src/environments/environment.example.ts
+
+# Firebase configuration files
+.firebaserc
+firebase.json
+firestore.indexes.json
+firestore.rules
+
+# Debug and documentation files (optional - uncomment if you don't want to commit)
+# DEBUG_*.md
+# DEV_STATUS.md
+# *_FEATURES.md
+# HOW_TO_*.md
+# FIREBASE_*.md
+# FIX_*.md

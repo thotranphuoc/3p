@@ -1,0 +1,70 @@
+<div class="kanban-board p-6 bg-gray-50 min-h-screen">
+  <div class="mb-6">
+    <h1 class="text-2xl font-bold text-gray-900">Kanban Board</h1>
+    <p class="text-gray-600 mt-1">Project Management</p>
+  </div>
+
+  <div *ngIf="loading()" class="flex justify-center items-center py-12">
+    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+  </div>
+
+  <div *ngIf="!loading()" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <!-- Kanban Column -->
+    <div *ngFor="let status of statuses" class="flex flex-col">
+      <div class="bg-white rounded-lg shadow-sm p-4 mb-2">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="font-semibold text-gray-900">{{ status.label }}</h2>
+          <span class="px-2 py-1 text-xs font-medium rounded-full {{ status.color }} text-gray-800">
+            {{ getTasksForStatus(status.key).length }}
+          </span>
+        </div>
+        <button
+          (click)="openTaskModal(status.key)"
+          class="w-full px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors flex items-center justify-center gap-1">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+          </svg>
+          Add Task
+        </button>
+      </div>
+
+      <div
+        [id]="status.key === 'in_progress' ? 'in-progress' : status.key"
+        cdkDropList
+        [cdkDropListData]="getTasksForStatus(status.key)"
+        [cdkDropListConnectedTo]="getConnectedLists()"
+        (cdkDropListDropped)="drop($event)"
+        class="flex-1 min-h-[400px] bg-gray-100 rounded-lg p-3 space-y-3">
+        
+        <div
+          *ngFor="let task of getTasksForStatus(status.key)"
+          cdkDrag
+          class="cursor-move"
+          (dblclick)="editTask(task)">
+          <app-task-card 
+            [task]="task"
+            [projectId]="projectId"
+            (addSubtask)="addSubtask.emit($event)"
+            (taskUpdated)="onTaskUpdated($event)">
+          </app-task-card>
+        </div>
+
+        <!-- Empty state -->
+        <div *ngIf="getTasksForStatus(status.key).length === 0" 
+             class="flex items-center justify-center h-32 text-gray-400 text-sm">
+          No tasks
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Task Modal -->
+  <app-task-modal
+    [projectId]="projectId"
+    [task]="selectedTask()"
+    [defaultStatus]="modalDefaultStatus()"
+    [isOpen]="showTaskModal()"
+    (close)="closeTaskModal()"
+    (saved)="onTaskSaved()">
+  </app-task-modal>
+</div>

@@ -1,0 +1,65 @@
+<div class="project-page min-h-screen bg-gray-50">
+  <!-- Top Navbar -->
+  <nav class="bg-white border-b border-gray-200 px-6 py-3">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-6">
+        <h2 class="text-xl font-bold text-blue-600">ProMan</h2>
+        <a routerLink="/dashboard" class="text-gray-700 hover:text-blue-600 font-medium">Dashboard</a>
+        <a routerLink="/profile" class="text-gray-700 hover:text-blue-600 font-medium">Profile</a>
+        <a *ngIf="authService.currentUserProfile()?.role === 'admin'" 
+           routerLink="/admin/users" 
+           class="text-gray-700 hover:text-blue-600 font-medium">
+          User Management
+        </a>
+        <span *ngIf="project()" class="text-gray-400">/ {{ project()!.name }}</span>
+      </div>
+      
+      <div class="flex items-center gap-4">
+        <!-- User Info -->
+        <div class="flex items-center gap-2 text-sm text-gray-600">
+          <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium">
+            {{ (authService.currentUserProfile()?.displayName?.charAt(0) || authService.currentUserProfile()?.email?.charAt(0) || 'U').toUpperCase() }}
+          </div>
+          <span>{{ authService.currentUserProfile()?.displayName || authService.currentUserProfile()?.email }}</span>
+        </div>
+        
+        <!-- Logout Button -->
+        <button
+          (click)="logout()"
+          [disabled]="loggingOut()"
+          class="px-3 py-1.5 text-sm text-gray-700 hover:text-red-600 border border-gray-300 rounded-md hover:border-red-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+          {{ loggingOut() ? 'Logging out...' : 'Logout' }}
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <div *ngIf="loading()" class="flex justify-center items-center py-12">
+    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+  </div>
+
+  <div *ngIf="!loading() && project()">
+    <app-kanban-board 
+      [projectId]="projectId()"
+      (addSubtask)="openSubtaskModal($event)">
+    </app-kanban-board>
+    
+    <app-subtask-modal
+      *ngIf="showSubtaskModal()"
+      [taskId]="selectedTaskId()"
+      [projectId]="projectId()"
+      [isOpen]="showSubtaskModal()"
+      (close)="closeSubtaskModal()"
+      (saved)="onSubtaskSaved()">
+    </app-subtask-modal>
+  </div>
+
+  <div *ngIf="!loading() && !project()" class="text-center py-12">
+    <p class="text-gray-600 mb-4">Project not found</p>
+    <button
+      (click)="router.navigate(['/dashboard'])"
+      class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+      Go to Dashboard
+    </button>
+  </div>
+</div>

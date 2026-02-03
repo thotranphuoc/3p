@@ -1,0 +1,202 @@
+<!-- Modal Overlay -->
+<div *ngIf="isOpen" 
+     class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+     (click)="closeModal(); showAssigneeDropdown.set(false)">
+  <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4"
+       (click)="$event.stopPropagation()">
+    <!-- Header -->
+    <div class="flex items-center justify-between p-6 border-b border-gray-200">
+      <h2 class="text-xl font-semibold text-gray-900">
+        {{ task ? 'Edit Task' : 'Create Task' }}
+      </h2>
+      <button (click)="closeModal()" 
+              class="text-gray-400 hover:text-gray-600 transition-colors">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Form -->
+    <form (ngSubmit)="onSubmit()" class="p-6 space-y-4">
+      <!-- Error Message -->
+      <div *ngIf="error()" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+        {{ error() }}
+      </div>
+
+      <!-- Title -->
+      <div>
+        <label for="title" class="block text-sm font-medium text-gray-700 mb-1">
+          Title *
+        </label>
+        <input
+          type="text"
+          id="title"
+          [value]="formData().title"
+          (input)="updateTitle($any($event.target).value)"
+          name="title"
+          required
+          class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          placeholder="Enter task title">
+      </div>
+
+      <!-- Status -->
+      <div>
+        <label for="status" class="block text-sm font-medium text-gray-700 mb-1">
+          Status
+        </label>
+        <select
+          id="status"
+          [value]="formData().status"
+          (change)="updateStatus($any($event.target).value)"
+          name="status"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+          <option value="todo">To Do</option>
+          <option value="in_progress">In Progress</option>
+          <option value="review">Review</option>
+          <option value="done">Done</option>
+        </select>
+      </div>
+
+      <!-- Assignees Selection -->
+      <div class="relative">
+        <label class="block text-sm font-medium text-gray-700 mb-1">
+          Assignees <span class="text-gray-500 text-xs">(max 3)</span>
+        </label>
+        
+        <!-- Selected Assignees Chips -->
+        <div *ngIf="selectedAssigneesData().length > 0" class="flex flex-wrap gap-2 mb-2">
+          <div
+            *ngFor="let assignee of selectedAssigneesData()"
+            class="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+            <div class="w-5 h-5 rounded-full bg-blue-300 flex items-center justify-center text-xs text-blue-900">
+              {{ assignee.displayName.charAt(0).toUpperCase() }}
+            </div>
+            <span>{{ assignee.displayName }}</span>
+            <button
+              type="button"
+              (click)="removeAssignee(assignee.uid)"
+              class="ml-1 text-blue-600 hover:text-blue-800">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Dropdown Toggle Button -->
+        <button
+          type="button"
+          (click)="toggleAssigneeDropdown()"
+          [disabled]="selectedAssignees().length >= 3"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-left focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
+          <span *ngIf="selectedAssignees().length === 0" class="text-gray-500">
+            Select assignees ({{ selectedAssignees().length }}/3)
+          </span>
+          <span *ngIf="selectedAssignees().length > 0 && selectedAssignees().length < 3" class="text-gray-700">
+            Add more assignees ({{ selectedAssignees().length }}/3)
+          </span>
+          <span *ngIf="selectedAssignees().length >= 3" class="text-gray-700">
+            Maximum assignees reached (3/3)
+          </span>
+          <svg class="w-5 h-5 float-right -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+          </svg>
+        </button>
+
+        <!-- Dropdown Menu -->
+        <div
+          *ngIf="showAssigneeDropdown()"
+          class="absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+          <!-- Search Input -->
+          <div class="p-2 border-b border-gray-200">
+            <input
+              type="text"
+              [value]="assigneeSearchTerm()"
+              (input)="assigneeSearchTerm.set($any($event.target).value)"
+              placeholder="Search by name or email..."
+              class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+          </div>
+
+          <!-- Members List -->
+          <div *ngIf="filteredMembers().length > 0" class="py-1">
+            <div
+              *ngFor="let member of filteredMembers()"
+              (click)="toggleAssignee(member.uid)"
+              [class.bg-blue-50]="isAssigneeSelected(member.uid)"
+              [class.opacity-50]="!isAssigneeSelected(member.uid) && selectedAssignees().length >= 3"
+              class="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 cursor-pointer">
+              <div class="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-sm text-gray-700">
+                {{ member.displayName.charAt(0).toUpperCase() }}
+              </div>
+              <div class="flex-1">
+                <div class="text-sm font-medium text-gray-900">{{ member.displayName }}</div>
+                <div class="text-xs text-gray-500">{{ member.email }}</div>
+              </div>
+              <div *ngIf="isAssigneeSelected(member.uid)" class="text-blue-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- Empty State -->
+          <div *ngIf="filteredMembers().length === 0" class="px-4 py-3 text-sm text-gray-500 text-center">
+            No members found
+          </div>
+        </div>
+      </div>
+
+      <!-- Subtasks List (only show when editing existing task) -->
+      <div *ngIf="task">
+        <div class="flex items-center justify-between mb-2">
+          <label class="block text-sm font-medium text-gray-700">
+            Subtasks
+          </label>
+          <button
+            type="button"
+            (click)="showSubtaskModal.set(true)"
+            class="text-xs text-blue-600 hover:text-blue-700 font-medium">
+            + Add Subtask
+          </button>
+        </div>
+        <app-subtask-list
+          [taskId]="task.id"
+          [projectId]="projectId"
+          [showTimer]="true"
+          (subtaskUpdated)="onSubtaskUpdated()"
+          (editSubtask)="onEditSubtask($event)">
+        </app-subtask-list>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
+        <button
+          type="button"
+          (click)="closeModal()"
+          class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+          Cancel
+        </button>
+        <button
+          type="submit"
+          [disabled]="loading()"
+          class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
+          <span *ngIf="!loading()">{{ task ? 'Update' : 'Create' }}</span>
+          <span *ngIf="loading()">Saving...</span>
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Subtask Modal -->
+  <app-subtask-modal
+    *ngIf="task"
+    [taskId]="task.id"
+    [projectId]="projectId"
+    [subtask]="selectedSubtask()"
+    [isOpen]="showSubtaskModal()"
+    (close)="closeSubtaskModal()"
+    (saved)="onSubtaskSaved()">
+  </app-subtask-modal>
+</div>
