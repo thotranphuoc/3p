@@ -1,0 +1,68 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    // Tránh lỗi khi user doc chưa tồn tại (mới đăng ký, chưa tạo profile)
+    function userDocExists() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+    function getUserRole() {
+      return userDocExists() ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'employee') : 'employee';
+    }
+    function isAdmin() {
+      return userDocExists() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'admin';
+    }
+    // User là thành viên dự án: Admin, hoặc director/manager của dự án, hoặc có trong memberIds
+    function isProjectMember(projectId) {
+      let proj = get(/databases/$(database)/documents/projects/$(projectId));
+      return isAdmin()
+        || proj.data.directorId == request.auth.uid
+        || proj.data.managerId == request.auth.uid
+        || request.auth.uid in proj.data.get('memberIds', []);
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || request.auth.uid == userId;
+    }
+
+    match /projects/{projectId} {
+      // MỞ HOÀN TOÀN ĐỂ TEST - SIẾT LẠI SAU
+      allow read, create, update: if true; // Tạm thời mở cho testing
+      // Rule cũ (siết lại sau):
+      // allow read: if isAuthenticated();
+      // allow create: if getUserRole() in ['admin', 'project_director'];
+      // allow update: if isAdmin() || (getUserRole() == 'project_director' && resource.data.directorId == request.auth.uid) || (getUserRole() == 'project_manager' && resource.data.managerId == request.auth.uid);
+    }
+
+    match /projectMembers/{id} {
+      // MỞ HOÀN TOÀN ĐỂ TEST
+      allow read, write: if isAuthenticated();
+      // Rule cũ: allow write: if isAdmin() || getUserRole() in ['project_director', 'project_manager'];
+    }
+
+    match /tasks/{taskId} {
+      // MỞ HOÀN TOÀN ĐỂ TEST - SIẾT LẠI SAU
+      allow read, create, update: if true; // Tạm thời mở cho testing
+      // Rule cũ (siết lại sau khi test xong):
+      // allow read: if isAuthenticated() && isProjectMember(resource.data.projectId);
+      // allow create: if getUserRole() in ['admin', 'project_manager'];
+      // allow update: if isAdmin() || (resource.data.assigneeId == request.auth.uid) || (getUserRole() == 'project_manager');
+    }
+
+    match /subtasks/{subtaskId} {
+      allow read, create, update, delete: if true; // Tạm thời mở cho testing
+    }
+
+    match /timeLogs/{logId} {
+      // MỞ HOÀN TOÀN ĐỂ TEST
+      allow read, create, update: if isAuthenticated();
+      // Rule cũ:
+      // allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isProjectMember(resource.data.projectId));
+      // allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      // allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+  }
+}
