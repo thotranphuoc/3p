@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, OnInit, OnChanges, SimpleChanges, inject, signal, computed } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, OnChanges, SimpleChanges, inject, signal, computed, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TaskService } from '../../services/task.service';
@@ -19,6 +19,7 @@ import { Subtask } from '../../models/subtask.model';
   styleUrl: './task-modal.component.scss'
 })
 export class TaskModalComponent implements OnInit, OnChanges {
+  @ViewChild(SubtaskListComponent) subtaskListComponent?: SubtaskListComponent;
   @Input() projectId!: string;
   @Input() task: Task | null = null; // If provided, edit mode
   @Input() defaultStatus: TaskStatus = 'todo';
@@ -33,6 +34,7 @@ export class TaskModalComponent implements OnInit, OnChanges {
 
   formData = signal({
     title: '',
+    description: '',
     status: 'todo' as TaskStatus,
     assignees_preview: [] as string[],
   });
@@ -41,6 +43,10 @@ export class TaskModalComponent implements OnInit, OnChanges {
   error = signal<string | null>(null);
   showSubtaskModal = signal<boolean>(false);
   selectedSubtask = signal<Subtask | null>(null);
+  
+  // Comments
+  newComment = signal<string>('');
+  showComments = signal<boolean>(false);
   
   // Assignees selection
   projectMembers = signal<AppUser[]>([]);
@@ -108,6 +114,7 @@ export class TaskModalComponent implements OnInit, OnChanges {
       // Edit mode - populate form with task data
       this.formData.set({
         title: this.task.title,
+        description: this.task.description || '',
         status: this.task.status,
         assignees_preview: [...this.task.assignees_preview],
       });
@@ -116,6 +123,7 @@ export class TaskModalComponent implements OnInit, OnChanges {
       // Create mode - use default status
       this.formData.set({
         title: '',
+        description: '',
         status: this.defaultStatus,
         assignees_preview: [],
       });
@@ -123,6 +131,7 @@ export class TaskModalComponent implements OnInit, OnChanges {
     }
     this.assigneeSearchTerm.set('');
     this.showAssigneeDropdown.set(false);
+    this.newComment.set('');
     // Clear error when form is repopulated
     this.error.set(null);
   }
@@ -143,6 +152,7 @@ export class TaskModalComponent implements OnInit, OnChanges {
       // Update existing task
       this.taskService.updateTask(this.task.id, {
         title: this.formData().title,
+        description: this.formData().description,
         status: this.formData().status,
         assignees_preview: assigneesArray,
       }).subscribe({
@@ -163,6 +173,7 @@ export class TaskModalComponent implements OnInit, OnChanges {
       const newTask: Omit<Task, 'id'> = {
         projectId: this.projectId,
         title: this.formData().title,
+        description: this.formData().description,
         status: this.formData().status,
         assignees_preview: assigneesArray,
         aggregates: {
@@ -170,7 +181,10 @@ export class TaskModalComponent implements OnInit, OnChanges {
           completed_subtasks: 0,
           total_actual_seconds: 0,
           total_estimate_seconds: 0,
-        }
+        },
+        comments: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
       };
 
       this.taskService.createTask(newTask).subscribe({
@@ -192,12 +206,15 @@ export class TaskModalComponent implements OnInit, OnChanges {
     this.isOpen = false;
     this.formData.set({
       title: '',
+      description: '',
       status: 'todo',
       assignees_preview: [],
     });
     this.selectedAssignees.set([]);
     this.assigneeSearchTerm.set('');
     this.showAssigneeDropdown.set(false);
+    this.newComment.set('');
+    this.showComments.set(false);
     this.error.set(null);
     this.close.emit();
   }
@@ -212,6 +229,11 @@ export class TaskModalComponent implements OnInit, OnChanges {
       if (current.length < 3) {
         this.selectedAssignees.set([...current, userId]);
       }
+    }
+    
+    // Auto-close dropdown if max reached
+    if (this.selectedAssignees().length >= 3) {
+      this.showAssigneeDropdown.set(false);
     }
   }
 
@@ -245,6 +267,63 @@ export class TaskModalComponent implements OnInit, OnChanges {
     });
   }
 
+  updateDescription(value: string): void {
+    this.formData.set({
+      ...this.formData(),
+      description: value,
+    });
+  }
+
+  addComment(): void {
+    const commentText = this.newComment().trim();
+    if (!commentText || !this.task) return;
+
+    const user = this.authService.getCurrentUser();
+    if (!user) return;
+
+    const newCommentObj = {
+      id: Date.now().toString(),
+      userId: user.uid,
+      userName: user.displayName || 'Unknown',
+      userEmail: user.email || '',
+      content: commentText,
+      createdAt: new Date(),
+    };
+
+    const updatedComments = [...(this.task.comments || []), newCommentObj];
+
+    this.taskService.updateTask(this.task.id, {
+      comments: updatedComments,
+    }).subscribe({
+      next: () => {
+        this.newComment.set('');
+        this.saved.emit(); // Refresh parent
+      },
+      error: (err) => {
+        console.error('Error adding comment:', err);
+        this.error.set('Failed to add comment');
+      }
+    });
+  }
+
+  deleteComment(commentId: string): void {
+    if (!this.task) return;
+
+    const updatedComments = (this.task.comments || []).filter(c => c.id !== commentId);
+
+    this.taskService.updateTask(this.task.id, {
+      comments: updatedComments,
+    }).subscribe({
+      next: () => {
+        this.saved.emit(); // Refresh parent
+      },
+      error: (err) => {
+        console.error('Error deleting comment:', err);
+        this.error.set('Failed to delete comment');
+      }
+    });
+  }
+
   onSubtaskUpdated(): void {
     // Reload task data if needed
     // For now, just emit saved event to refresh parent
@@ -264,6 +343,10 @@ export class TaskModalComponent implements OnInit, OnChanges {
   onSubtaskSaved(): void {
     this.showSubtaskModal.set(false);
     this.selectedSubtask.set(null);
-    // Reload subtasks will be handled by subtask-list component
+    // Force reload subtasks to show updated data
+    if (this.subtaskListComponent) {
+      this.subtaskListComponent.loadSubtasks();
+    }
+    this.saved.emit(); // Also notify parent
   }
 }

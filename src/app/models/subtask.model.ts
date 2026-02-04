@@ -5,9 +5,12 @@ export interface Subtask {
   parentId: string; // Reference to Task
   projectId: string; // Reference to Project
   title: string;
+  description?: string; // Optional description/notes
   status: SubtaskStatus;
   assignees: string[]; // Array of UIDs
   
   estimate_seconds: number;
   actual_seconds: number; // Sum of logs for this subtask
+  createdAt?: Date;
+  updatedAt?: Date;
 }

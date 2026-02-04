@@ -1,251 +1,239 @@
-# PRO-MAN PROJECT: TECHNICAL SPECIFICATION DOCUMENT (TSD)
+PRO-MAN PROJECT: MASTER TECHNICAL SPECIFICATION
+Project Name: Pro-Man (Professional Project Management PWA)
+Version: 4.0 (Added Strategy/BSC Module)
+Last Updated: 2024
+Tech Stack: Angular (Signals) + Firebase (Firestore) + Tailwind CSS
+Core Philosophy: "Offline-first, Cost-Efficient, Gamified Strategy"
 
-**Version:** 2.0
-**Last Updated:** 2024
-**Project Type:** Project Management PWA
-**Core Philosophy:** "Professional Logic, Cool UX, Cost-Efficient Architecture"
+1. ARCHITECTURE & TECH STACK
+1.1 Frontend (Angular PWA)
 
----
+Framework: Angular v17+ (Required: Standalone Components, Signals)
+State Management: Angular Signals (Local) + RxJS (Global)
+Styling: Tailwind CSS (Primary) + SCSS (Secondary)
+Charting:ngx-charts or Chart.js (For Radar Charts / Strategy Maps)
+PWA:@angular/service-worker (Performance strategy)
 
-## 1. TECH STACK & ARCHITECTURE
+1.2 Backend (Serverless Firebase)
 
-### Frontend (Angular PWA)
-* **Framework:** Angular v17+ (Standalone Components, Signals required).
-* **State Management:** Angular Signals (Local state) + RxJS (Global streams).
-* **Styling:** Tailwind CSS (Primary for layout/responsive) + SCSS (Secondary for complex animations/glassmorphism).
-* **PWA:** `@angular/service-worker` (Strategy: Performance-first).
-* **Icons:** Phosphor Icons or Heroicons (SVG).
+Database: Cloud Firestore (NoSQL)
+Auth: Firebase Auth
+Storage: Firebase Storage (< 200KB images)
 
-### Backend (Serverless)
-* **Database:** Firebase Firestore.
-* **Auth:** Firebase Authentication (Google & Email).
-* **Logic:**
-    * **Read:** Client-side Querying + Pagination.
-    * **Write/Aggregation:** Client-side Atomic Batch Writes (To save Cloud Function costs).
-    * **Time Calculation:** Server Timestamp logic.
+1.3 Key Optimization Principles
 
----
+Frontend Pagination: strict limit(20)
+Client-side Aggregation: Use Batch Writes to update counters (total_hours, progress_%)
+Offline Persistence:enableIndexedDbPersistence()
 
-## 2. DATABASE SCHEMA (FIRESTORE)
 
-**CRITICAL RULE:** Use Root Collections for scalability. Apply Denormalization for read efficiency.
-
-### Collection: `users`
-```typescript
-interface User {
+2. DATABASE SCHEMA (FIRESTORE)
+Strategy: Denormalization. Root Collections: users, projects, tasks, subtasks, objectives, time_logs.
+2.1 Collection: users
+TypeScriptinterface User {
   uid: string;
   email: string;
   displayName: string;
-  photoURL: string;
   role: 'admin' | 'manager' | 'member';
-  // ACTIVE TIMER: Stores current running task state
+
+  // ACTIVE TIMER (Sync across devices)
   active_timer: {
     isRunning: boolean;
     taskId: string;
     subtaskId: string;
     projectId: string;
-    startTime: Timestamp; // Server Timestamp
-    localStartTime: string; // ISO String (Backup for UI)
+    startTime: Timestamp;
   } | null;
 }
-
-
-Collection: projects
-TypeScript
-
-
-interface Project {
+2.2 Collection: projects
+TypeScriptinterface Project {
   id: string;
   name: string;
-  members: string[]; // List of UIDs for security rules
-  // AGGREGATES (Updated via Batch Write)
+  members: string[];
   stats: {
     total_tasks: number;
     completed_tasks: number;
   };
 }
+2.3 Collection: objectives (NEW - Strategy Layer)
 
+Purpose: Store BSC/OKR goals. Linked to Projects or Global.
 
-Collection: tasks (Parent Tasks)
-TypeScript
-
-
-interface Task {
+TypeScriptinterface Objective {
   id: string;
-  projectId: string; // Indexed
+  projectId: string | 'global';
+  title: string;
+  type: 'financial' | 'customer' | 'internal' | 'learning'; // BSC Quadrants
+  status: 'on_track' | 'at_risk' | 'behind';
+
+  // WEIGHTED PROGRESS CALCULATION
+  total_weight: number;           // Sum of all Key Results' weights (e.g., 100)
+  current_weighted_score: number; // Sum of (KR_Progress * KR_Weight)
+  progress_percent: number;       // (current_weighted_score / total_weight) * 100
+
+  // KEY RESULTS (Nested Array for atomic updates)
+  key_results: Array<{
+    id: string;
+    title: string;
+    weight: number; // Importance (1-100)
+
+    type: 'metric' | 'task_linked';
+
+    // Type A: Manual Metric (e.g., Revenue)
+    target_value?: number;
+    current_value?: number;
+    unit?: string;
+
+    // Type B: Task Linked (Auto-calculated)
+    linked_task_ids?: string[]; // List of Task IDs contributing to this KR
+
+    progress: number; // 0-100%
+  }>;
+}
+2.4 Collection: tasks (Parent Tasks)
+
+Update: Added goal_link for BSC contribution.
+
+TypeScriptinterface Task {
+  id: string;
+  projectId: string;
   title: string;
   status: 'todo' | 'in_progress' | 'review' | 'done';
-  assignees_preview: string[]; // Cache first 3 UIDs for UI
-  
-  // AGGREGATES (Roll-up from Subtasks)
+  assignees_preview: string[];
+
+  // STRATEGY LINKING (NEW)
+  goal_link?: {
+    objectiveId: string;
+    keyResultId: string;
+    contribution_weight: number; // Importance of this task to the KR (default 1)
+  };
+
+  // AGGREGATES
   aggregates: {
     total_subtasks: number;
     completed_subtasks: number;
-    total_actual_seconds: number; // Sum of all logs
+    total_actual_seconds: number;
     total_estimate_seconds: number;
   };
 }
-
-
-Collection: subtasks (ROOT COLLECTION)
-Reason: Allows "My Tasks" query across all projects without Collection Group queries.
-TypeScript
-
-
-interface Subtask {
+2.5 Collection: subtasks (ROOT COLLECTION)
+TypeScriptinterface Subtask {
   id: string;
-  parentId: string; // Reference to Task
-  projectId: string; // Reference to Project
+  parentId: string;
+  projectId: string;
   title: string;
   status: 'todo' | 'done';
-  assignees: string[]; // Array of UIDs
-  
+  assignees: string[];
   estimate_seconds: number;
-  actual_seconds: number; // Sum of logs for this subtask
+  actual_seconds: number;
 }
-
-
-Collection: time_logs (Immutable History)
-TypeScript
-
-
-interface TimeLog {
+2.6 Collection: time_logs (History)
+TypeScriptinterface TimeLog {
   id: string;
   userId: string;
   taskId: string;
-  subtaskId: string;
-  seconds: number; // Duration
+  seconds: number;
   createdAt: Timestamp;
 }
 
+3. FEATURE LOGIC & IMPLEMENTATION
+3.1 Smart Time Tracking (Batch Write)
+
+Start: Write users/{uid}.active_timer. Client counts locally.
+Stop: Batch Write (1 Request):
+Create time_logs entry
+Increment subtasks actual time
+Increment tasks aggregate time
+Clear active_timer
 
 
-3. CORE FEATURES & LOGIC SPECIFICATIONS
-3.1. Smart Time Tracking (The "Money Saver" Logic)
-Objective: Track time accurately without continuous server writes.
-Action: Start Timer
-Check if user.active_timer is not null. If exists, stop it first.
-Write to users/{uid} -> Update active_timer field with serverTimestamp().
-UI: Start local setInterval counting from now - startTime.
-Action: Stop Timer (Atomic Batch Write)
-Input: activeTimer object, currentTime.
-Calculation: duration = currentTime - activeTimer.startTime.
-Firestore Batch Operations (All in one request):
-time_logs: Create new doc (Log history).
-subtasks/{subId}: Increment actual_seconds by duration.
-tasks/{taskId}: Increment aggregates.total_actual_seconds by duration.
-users/{uid}: Set active_timer to null.
-3.2. Task Management & Aggregation
-Logic: When a Subtask is created/deleted or status changes.
-Batch Write:
-Create subtasks/{newId}.
-Update tasks/{parentId}: Increment aggregates.total_subtasks.
-Progress Calculation (Frontend):
-Progress % = (completed_subtasks / total_subtasks) * 100.
-Time Health = (total_actual_seconds / total_estimate_seconds) * 100. (Red if > 100%).
-3.3. Optimization & Caching Rules
-Offline: Must enable enableIndexedDbPersistence() in app.config.ts.
-Reads:
-Strict Pagination: Always use limit(20) or limit(50) for lists.
-No "Select All": Never query generic .collection('tasks') without where clause.
-Subscriptions: Use takeUntilDestroyed or AsyncPipe.
+3.2 BSC/OKR Calculation Logic (Weighted Average)
 
-4. IMPLEMENTATION CHECKLIST (PRIORITY ORDER)
-Phase 1: Core Foundation (Estimated: 2 days)
-[ ] Setup Angular: Init project, configure Tailwind CSS.
-[ ] Setup Firebase: Config Firestore, Auth, Hosting.
-[ ] Security: Implement app.config.ts with Offline Persistence enabled.
-[ ] Auth: Build Login/Logout with Google Auth. Guard routes.
-Phase 2: Task Structure (Estimated: 3-4 days)
-[ ] DB Services: Create ProjectService, TaskService (Abstract Firestore logic).
-[ ] UI - Kanban Board:
-[ ] Setup Drag & Drop (Angular CDK).
-[ ] Display Task Cards with Aggregated Stats (read from Task doc).
-[ ] UI - Subtasks:
-[ ] Create/Edit Subtask modal.
-[ ] Implement Batch Write when creating subtask (Update Parent stats).
-Phase 3: The "Cool" Time Tracking (Estimated: 3 days)
-[ ] Timer Service: Implement startTimer and stopTimer logic using Signals.
-[ ] Batch Write Logic: Implement the complex aggregation logic (Section 3.1) strictly.
-[ ] Global Timer UI: Floating widget showing current running task (even when navigating).
-[ ] Edge Cases: Handle "Forgot to stop" (Basic UI prompt on next login).
-Phase 4: Polish & PWA (Estimated: 2 days)
-[ ] Optimistic UI: Ensure UI updates immediately before Server response.
-[ ] Dark Mode: Configure Tailwind Dark Mode class strategy.
-[ ] Manifest: Configure manifest.webmanifest (Icons, Theme color).
-[ ] Service Worker: Build prod and test Offline mode.
+Trigger: Task status changes to 'done' OR manual metric update.
+Formula:Objective % = Sum(KR_Progress * KR_Weight) / Sum(KR_Weight)
 
-5. CODE GUIDELINES (FOR AI GENERATION)
-Guideline 1: Batch Write Template
-Use this pattern for Time Tracking to ensure data consistency.
-TypeScript
+Implementation (Client-side Batch):
+When a Task linked to KeyResult X of Objective Y is completed:
+
+Read Objective Y document
+Calculate:
+Find KeyResult X
+Recalculate KeyResult X progress (based on linked tasks or manual input)
+Recalculate Objective Y weighted progress
+
+Write updated Objective Y
+
+3.3 Visual Strategy Map (UI)
+
+Radar Chart: Display 4 BSC axes (Financial, Customer, Internal, Learning)
+Tree View: Objective → Key Results → Tasks
+Gamification: Show "Impact Badge" on Task Detail:
+"This task contributes 5% to the goal 'Dominate SE Asia'"
 
 
-// Example: Stop Timer Logic
-async stopTimer(timer: ActiveTimer, durationSeconds: number) {
-  const batch = writeBatch(this.firestore);
-  
-  // 1. Create Log
-  const logRef = doc(collection(this.firestore, 'time_logs'));
-  batch.set(logRef, {
-    userId: this.auth.uid,
-    subtaskId: timer.subtaskId,
-    seconds: durationSeconds,
-    createdAt: serverTimestamp()
-  });
+4. IMPLEMENTATION CHECKLIST
+Phase 1: Foundation (Done/In-progress)
 
-  // 2. Aggregate Subtask
-  const subRef = doc(this.firestore, `subtasks/${timer.subtaskId}`);
-  batch.update(subRef, {
-    actual_seconds: increment(durationSeconds)
-  });
+ Angular Init, Firebase Setup, Auth
 
-  // 3. Aggregate Parent Task
-  const taskRef = doc(this.firestore, `tasks/${timer.taskId}`);
-  batch.update(taskRef, {
-    'aggregates.total_actual_seconds': increment(durationSeconds)
-  });
+Phase 2: Core Task Management
 
-  // 4. Reset User Timer
-  const userRef = doc(this.firestore, `users/${this.auth.uid}`);
-  batch.update(userRef, { active_timer: null });
+ Projects & Tasks CRUD
+ Subtasks (Root collection)
+ Kanban Board (Drag & Drop)
 
-  await batch.commit();
-}
+Phase 3: Time Tracking (The "Money Saver")
+
+ Timer Service (Signals)
+ Batch Write Logic for Time Logs
+
+Phase 4: Strategy Module (BSC/OKR) - NEW
+
+ Objective Service: CRUD Objectives & Key Results
+ Goal Linking: UI to select Objective/KR when creating a Task
+ Auto-Calculation Logic: Update Objective progress when Task is done
+ Dashboard: Radar Chart implementation
+
+Phase 5: Polish & Optimization
+
+ PWA Config
+ Dark Mode
+ Security Rules Audit
 
 
-Guideline 2: Security Rules (Cost Control)
-Include these rules to prevent accidental massive reads.
-Plaintext
+5. SECURITY RULES (UPDATED)
+firestorerules_version = '2';
 
-
-rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Prevent fetching all tasks without limit
+
+    function isMember(projectId) {
+      return request.auth != null &&
+             request.auth.uid in get(/databases/$(database)/documents/projects/$(projectId)).data.members;
+    }
+
+    match /projects/{projectId} {
+      allow read: if isMember(projectId);
+    }
+
+    // Allow reading objectives if member of project OR if global
+    match /objectives/{objId} {
+      allow read: if resource.data.projectId == 'global' ||
+                     isMember(resource.data.projectId);
+      allow write: if isMember(resource.data.projectId); // Simplified
+    }
+
     match /tasks/{taskId} {
       allow list: if request.query.limit <= 50;
+      allow read, write: if isMember(resource.data.projectId);
     }
+
     match /subtasks/{subId} {
-      allow read: if resource.data.projectId in request.auth.token.project_access;
+      allow read, write: if isMember(resource.data.projectId);
+    }
+
+    match /users/{userId} {
+      allow read, write: if request.auth.uid == userId;
     }
   }
 }
-
-
-
-END OF SPECIFICATION
-
-
-
-### Hướng dẫn sử dụng file này với AI (Copilot/ChatGPT):
-
-1.  **Bước 1:** Copy toàn bộ nội dung trên vào file `PROMAN_SPEC.md` trong thư mục gốc project.
-2.  **Bước 2:** Khi chat với AI để nhờ code, hãy luôn tham chiếu đến file này.
-    * *Ví dụ:* "@PROMAN_SPEC.md Hãy viết cho tôi `TimerService` của Angular, chú ý tuân thủ logic Batch Write ở mục 3.1 và Guideline 1."
-3.  **Bước 3:** Yêu cầu AI kiểm tra lại "Cost Optimization" trước khi finalize code.
-
-Bạn có thể bắt đầu bằng việc tạo file này. Sau đó, chúng ta sẽ bắt đầu code **Phase 1: Setup Core** nhé?
-
-
-

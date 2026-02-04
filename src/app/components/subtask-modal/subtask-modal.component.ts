@@ -29,6 +29,7 @@ export class SubtaskModalComponent implements OnInit, OnChanges {
 
   formData = signal({
     title: '',
+    description: '',
     status: 'todo' as SubtaskStatus,
     estimate_hours: 0,
     estimate_minutes: 0,
@@ -106,6 +107,7 @@ export class SubtaskModalComponent implements OnInit, OnChanges {
       
       this.formData.set({
         title: this.subtask.title,
+        description: this.subtask.description || '',
         status: this.subtask.status,
         estimate_hours: hours,
         estimate_minutes: minutes,
@@ -115,6 +117,7 @@ export class SubtaskModalComponent implements OnInit, OnChanges {
       // Create mode - reset form
       this.formData.set({
         title: '',
+        description: '',
         status: 'todo',
         estimate_hours: 0,
         estimate_minutes: 0,
@@ -145,6 +148,7 @@ export class SubtaskModalComponent implements OnInit, OnChanges {
       // Update existing subtask
       this.subtaskService.updateSubtask(this.subtask.id, {
         title: this.formData().title,
+        description: this.formData().description,
         status: this.formData().status,
         assignees: assigneesArray,
         estimate_seconds: estimateSeconds,
@@ -166,10 +170,13 @@ export class SubtaskModalComponent implements OnInit, OnChanges {
         parentId: this.taskId,
         projectId: this.projectId,
         title: this.formData().title,
+        description: this.formData().description,
         status: this.formData().status,
         assignees: assigneesArray,
         estimate_seconds: estimateSeconds,
         actual_seconds: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       };
 
       this.subtaskService.createSubtask(newSubtask).subscribe({
@@ -191,6 +198,7 @@ export class SubtaskModalComponent implements OnInit, OnChanges {
     this.isOpen = false;
     this.formData.set({
       title: '',
+      description: '',
       status: 'todo',
       estimate_hours: 0,
       estimate_minutes: 0,
@@ -211,6 +219,7 @@ export class SubtaskModalComponent implements OnInit, OnChanges {
       // Add assignee
       this.selectedAssignees.set([...current, userId]);
     }
+    // Note: No max limit for subtask assignees, so no auto-close needed
   }
 
   isAssigneeSelected(userId: string): boolean {
@@ -250,6 +259,13 @@ export class SubtaskModalComponent implements OnInit, OnChanges {
     this.formData.set({
       ...this.formData(),
       title: value,
+    });
+  }
+
+  updateDescription(value: string): void {
+    this.formData.set({
+      ...this.formData(),
+      description: value,
     });
   }
 

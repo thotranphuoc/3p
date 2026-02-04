@@ -1,218 +1,219 @@
 <!-- Modal Overlay -->
 <div *ngIf="isOpen" 
-     class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+     class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
      (click)="closeModal(); showAssigneeDropdown.set(false)">
-  <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto"
+  <div class="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col"
        (click)="$event.stopPropagation()">
+    
     <!-- Header -->
-    <div class="flex items-center justify-between p-6 border-b border-gray-200">
-      <h2 class="text-xl font-semibold text-gray-900">
-        {{ subtask ? 'Edit Subtask' : 'Create Subtask' }}
-      </h2>
+    <div class="flex items-center justify-between px-6 py-4 bg-green-600 text-white">
+      <div>
+        <h2 class="text-xl font-bold">{{ subtask ? 'Edit Subtask' : 'New Subtask' }}</h2>
+        <p class="text-sm text-green-100 mt-0.5">{{ subtask ? 'Update subtask details' : 'Create a new subtask' }}</p>
+      </div>
       <button (click)="closeModal()" 
-              class="text-gray-400 hover:text-gray-600 transition-colors">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              class="text-white/80 hover:text-white hover:bg-white/10 p-2 rounded-lg transition">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
         </svg>
       </button>
     </div>
 
-    <!-- Form -->
-    <form (ngSubmit)="onSubmit()" class="p-6 space-y-4">
-      <!-- Error Message -->
-      <div *ngIf="error()" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-        {{ error() }}
-      </div>
-
-      <!-- Title -->
-      <div>
-        <label for="title" class="block text-sm font-medium text-gray-700 mb-1">
-          Title *
-        </label>
-        <input
-          type="text"
-          id="title"
-          [value]="formData().title"
-          (input)="updateTitle($any($event.target).value)"
-          name="title"
-          required
-          class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-          placeholder="Enter subtask title">
-      </div>
-
-      <!-- Status -->
-      <div>
-        <label for="status" class="block text-sm font-medium text-gray-700 mb-1">
-          Status
-        </label>
-        <select
-          id="status"
-          [value]="formData().status"
-          (change)="updateStatus($any($event.target).value)"
-          name="status"
-          class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-          <option value="todo">To Do</option>
-          <option value="done">Done</option>
-        </select>
-      </div>
-
-      <!-- Estimate Time -->
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">
-          Estimate Time
-        </label>
-        <div class="grid grid-cols-2 gap-3">
-          <!-- Hours Input -->
-          <div>
-            <label for="estimate-hours" class="block text-xs text-gray-600 mb-1">
-              Hours
-            </label>
-            <input
-              type="number"
-              id="estimate-hours"
-              [value]="formData().estimate_hours"
-              (input)="updateEstimateHours($any($event.target).value)"
-              name="estimate-hours"
-              min="0"
-              step="1"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              placeholder="0">
-          </div>
-          
-          <!-- Minutes Input -->
-          <div>
-            <label for="estimate-minutes" class="block text-xs text-gray-600 mb-1">
-              Minutes
-            </label>
-            <input
-              type="number"
-              id="estimate-minutes"
-              [value]="formData().estimate_minutes"
-              (input)="updateEstimateMinutes($any($event.target).value)"
-              name="estimate-minutes"
-              min="0"
-              max="59"
-              step="1"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              placeholder="0">
-          </div>
-        </div>
-        <p class="mt-2 text-xs text-gray-500">
-          Total: {{ formatTime(getTotalEstimateSeconds()) }}
-        </p>
-      </div>
-
-      <!-- Assignees Selection -->
-      <div class="relative">
-        <label class="block text-sm font-medium text-gray-700 mb-1">
-          Assignees
-        </label>
+    <!-- Form Content -->
+    <form (ngSubmit)="onSubmit()" class="flex-1 overflow-y-auto">
+      <div class="px-6 py-5 space-y-5">
         
-        <!-- Selected Assignees Chips -->
-        <div *ngIf="selectedAssigneesData().length > 0" class="flex flex-wrap gap-2 mb-2">
-          <div
-            *ngFor="let assignee of selectedAssigneesData()"
-            class="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
-            <div class="w-5 h-5 rounded-full bg-blue-300 flex items-center justify-center text-xs text-blue-900">
-              {{ assignee.displayName.charAt(0).toUpperCase() }}
-            </div>
-            <span>{{ assignee.displayName }}</span>
-            <button
-              type="button"
-              (click)="removeAssignee(assignee.uid)"
-              class="ml-1 text-blue-600 hover:text-blue-800">
-              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-              </svg>
-            </button>
+        <!-- Error Message -->
+        <div *ngIf="error()" class="bg-red-50 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded">
+          <div class="flex items-center">
+            <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+            </svg>
+            {{ error() }}
           </div>
         </div>
 
-        <!-- Dropdown Toggle Button -->
-        <button
-          type="button"
-          (click)="toggleAssigneeDropdown()"
-          class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-left focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-          <span *ngIf="selectedAssignees().length === 0" class="text-gray-500">
-            Select assignees
-          </span>
-          <span *ngIf="selectedAssignees().length > 0" class="text-gray-700">
-            Add more assignees ({{ selectedAssignees().length }})
-          </span>
-          <svg class="w-5 h-5 float-right -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-          </svg>
-        </button>
+        <!-- Title -->
+        <div>
+          <label for="title" class="block text-sm font-medium text-gray-700 mb-1">Subtask Title *</label>
+          <input
+            type="text"
+            id="title"
+            [value]="formData().title"
+            (input)="updateTitle($any($event.target).value)"
+            required
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            placeholder="Enter subtask title">
+        </div>
 
-        <!-- Dropdown Menu -->
-        <div
-          *ngIf="showAssigneeDropdown()"
-          class="absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
-          <!-- Search Input -->
-          <div class="p-2 border-b border-gray-200">
-            <input
-              type="text"
-              [value]="assigneeSearchTerm()"
-              (input)="assigneeSearchTerm.set($any($event.target).value)"
-              placeholder="Search by name or email..."
-              class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+        <!-- Description -->
+        <div>
+          <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+          <textarea
+            id="description"
+            [value]="formData().description"
+            (input)="updateDescription($any($event.target).value)"
+            rows="2"
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+            placeholder="Add notes or details..."></textarea>
+        </div>
+
+        <!-- Status and Estimate -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          
+          <!-- Status -->
+          <div>
+            <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+            <select
+              id="status"
+              [value]="formData().status"
+              (change)="updateStatus($any($event.target).value)"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white">
+              <option value="todo">To Do</option>
+              <option value="done">Done</option>
+            </select>
           </div>
 
-          <!-- Members List -->
-          <div *ngIf="filteredMembers().length > 0" class="py-1">
-            <div
-              *ngFor="let member of filteredMembers()"
-              (click)="toggleAssignee(member.uid)"
-              [class.bg-blue-50]="isAssigneeSelected(member.uid)"
-              class="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 cursor-pointer">
-              <div class="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-sm text-gray-700">
-                {{ member.displayName.charAt(0).toUpperCase() }}
+          <!-- Estimate Time -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Estimate Time</label>
+            <div class="flex gap-2">
+              <div class="flex-1">
+                <input
+                  type="number"
+                  [value]="formData().estimate_hours"
+                  (input)="updateEstimateHours($any($event.target).value)"
+                  min="0"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  placeholder="Hours">
               </div>
               <div class="flex-1">
-                <div class="text-sm font-medium text-gray-900">{{ member.displayName }}</div>
-                <div class="text-xs text-gray-500">{{ member.email }}</div>
+                <input
+                  type="number"
+                  [value]="formData().estimate_minutes"
+                  (input)="updateEstimateMinutes($any($event.target).value)"
+                  min="0"
+                  max="59"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  placeholder="Mins">
               </div>
-              <div *ngIf="isAssigneeSelected(member.uid)" class="text-blue-600">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </div>
+          </div>
+        </div>
+
+        <!-- Assignees -->
+        <div class="relative">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Assignees</label>
+        
+          <!-- Selected Chips -->
+          <div *ngIf="selectedAssigneesData().length > 0" class="flex flex-wrap gap-1.5 mb-2">
+            <div *ngFor="let assignee of selectedAssigneesData()"
+              class="inline-flex items-center gap-1.5 pl-1 pr-2 py-1 bg-green-50 border border-green-200 rounded-full text-sm">
+              <div class="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center text-xs font-semibold text-white">
+                {{ assignee.displayName.charAt(0).toUpperCase() }}
+              </div>
+              <span class="text-gray-700">{{ assignee.displayName }}</span>
+              <button type="button"
+                (click)="removeAssignee(assignee.uid)"
+                class="text-green-600 hover:text-green-800 hover:bg-green-100 rounded-full p-0.5">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Dropdown Toggle -->
+          <button type="button"
+            (click)="toggleAssigneeDropdown(); $event.stopPropagation()"
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-left text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+            <span *ngIf="selectedAssignees().length === 0" class="text-gray-500">Select assignees</span>
+            <span *ngIf="selectedAssignees().length > 0" class="text-gray-700">
+              Add more assignees ({{ selectedAssignees().length }})
+            </span>
+            <svg class="w-4 h-4 float-right mt-0.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            </svg>
+          </button>
+
+          <!-- Dropdown Menu -->
+          <div *ngIf="showAssigneeDropdown()"
+            class="absolute z-30 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg overflow-hidden"
+            (click)="$event.stopPropagation()">
+            
+            <!-- Search -->
+            <div class="p-2 border-b border-gray-200">
+              <input type="text"
+                [value]="assigneeSearchTerm()"
+                (input)="assigneeSearchTerm.set($any($event.target).value)"
+                placeholder="Search..."
+                class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500">
+            </div>
+
+            <!-- Members List -->
+            <div *ngIf="filteredMembers().length > 0" class="max-h-48 overflow-y-auto">
+              <div *ngFor="let member of filteredMembers()"
+                (click)="toggleAssignee(member.uid); $event.stopPropagation()"
+                [class.bg-green-50]="isAssigneeSelected(member.uid)"
+                class="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0">
+                <div class="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-sm font-semibold text-white">
+                  {{ member.displayName.charAt(0).toUpperCase() }}
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-gray-900 truncate">{{ member.displayName }}</div>
+                  <div class="text-xs text-gray-500 truncate">{{ member.email }}</div>
+                </div>
+                <svg *ngIf="isAssigneeSelected(member.uid)" class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
                 </svg>
               </div>
             </div>
-          </div>
 
-          <!-- Empty State -->
-          <div *ngIf="filteredMembers().length === 0" class="px-4 py-3 text-sm text-gray-500 text-center">
-            No members found
+            <!-- Empty State -->
+            <div *ngIf="filteredMembers().length === 0" class="px-3 py-6 text-center text-sm text-gray-500">
+              No members found
+            </div>
+          </div>
+        </div>
+
+        <!-- Time Tracking (if editing) -->
+        <div *ngIf="subtask" class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+          <div class="flex items-center justify-between mb-3">
+            <h4 class="text-sm font-semibold text-gray-700">Time Tracking</h4>
+            <app-timer-button
+              [taskId]="taskId"
+              [subtaskId]="subtask.id"
+              [projectId]="projectId">
+            </app-timer-button>
+          </div>
+          <div class="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span class="text-gray-600">Estimated:</span>
+              <span class="ml-2 font-medium text-gray-900">{{ formatTime(subtask.estimate_seconds) }}</span>
+            </div>
+            <div>
+              <span class="text-gray-600">Actual:</span>
+              <span class="ml-2 font-medium text-gray-900">{{ formatTime(subtask.actual_seconds) }}</span>
+            </div>
           </div>
         </div>
       </div>
-
-      <!-- Timer Button (for existing subtasks) -->
-      <div *ngIf="subtask" class="pt-4 border-t border-gray-200">
-        <app-timer-button
-          [taskId]="taskId"
-          [subtaskId]="subtask.id"
-          [projectId]="projectId"
-          [subtaskTitle]="subtask.title">
-        </app-timer-button>
-      </div>
-
-      <!-- Actions -->
-      <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
-        <button
-          type="button"
-          (click)="closeModal()"
-          class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-          Cancel
-        </button>
-        <button
-          type="submit"
-          [disabled]="loading()"
-          class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
-          <span *ngIf="!loading()">{{ subtask ? 'Update' : 'Create' }}</span>
-          <span *ngIf="loading()">Saving...</span>
-        </button>
-      </div>
     </form>
+
+    <!-- Footer -->
+    <div class="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-200">
+      <button type="button"
+        (click)="closeModal()"
+        class="px-5 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+        Cancel
+      </button>
+      <button type="button"
+        (click)="onSubmit()"
+        [disabled]="loading()"
+        class="px-6 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition">
+        <span *ngIf="!loading()">{{ subtask ? 'Update' : 'Create' }}</span>
+        <span *ngIf="loading()">Saving...</span>
+      </button>
+    </div>
   </div>
 </div>
