@@ -118,7 +118,7 @@ export class UserService {
   /**
    * Update user role (Admin only)
    */
-  updateUserRole(uid: string, role: 'admin' | 'manager' | 'member'): Observable<void> {
+  updateUserRole(uid: string, role: 'admin' | 'director' | 'manager' | 'member'): Observable<void> {
     const userRef = doc(this.firestore, `${this.collectionName}/${uid}`);
     return from(updateDoc(userRef, { role }));
   }

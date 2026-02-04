@@ -14,6 +14,6 @@ export interface User {
   email: string;
   displayName: string;
   photoURL: string;
-  role: 'admin' | 'manager' | 'member';
+  role: 'admin' | 'director' | 'manager' | 'member';
   active_timer: ActiveTimer | null;
 }

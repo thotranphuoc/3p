@@ -3,9 +3,11 @@ import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { Task } from '../../models/task.model';
 import { Subtask } from '../../models/subtask.model';
+import { Objective } from '../../models/objective.model';
 import { SubtaskListComponent } from '../subtask-list/subtask-list.component';
 import { SubtaskModalComponent } from '../subtask-modal/subtask-modal.component';
 import { SubtaskService } from '../../services/subtask.service';
+import { ObjectiveService } from '../../services/objective.service';
 
 @Component({
   selector: 'app-task-card',
@@ -21,6 +23,7 @@ export class TaskCardComponent implements OnChanges, OnDestroy {
   @Output() taskUpdated = new EventEmitter<Task>(); // Emit updated task when task needs to be reloaded
   
   private subtaskService = inject(SubtaskService);
+  private objectiveService = inject(ObjectiveService);
   private subtasksSubscription?: Subscription;
   
   // Real-time subtasks list
@@ -30,6 +33,9 @@ export class TaskCardComponent implements OnChanges, OnDestroy {
   // Subtask modal state
   showSubtaskModal = signal<boolean>(false);
   selectedSubtask = signal<Subtask | null>(null);
+  
+  // BSC/OKR goal linking
+  linkedObjective = signal<Objective | null>(null);
   
   // Computed aggregates from subtasks (CLIENT-SIDE CALCULATION)
   computedAggregates = computed(() => {
@@ -45,6 +51,23 @@ export class TaskCardComponent implements OnChanges, OnDestroy {
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['task'] && this.task?.id) {
       this.loadSubtasks();
+      this.loadObjectiveData();
+    }
+  }
+  
+  private loadObjectiveData(): void {
+    if (this.task.goal_link) {
+      this.objectiveService.getObjective(this.task.goal_link.objectiveId).subscribe({
+        next: (objective) => {
+          this.linkedObjective.set(objective);
+        },
+        error: (error) => {
+          console.error('Error loading linked objective:', error);
+          this.linkedObjective.set(null);
+        }
+      });
+    } else {
+      this.linkedObjective.set(null);
     }
   }
 

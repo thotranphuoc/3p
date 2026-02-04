@@ -1,14 +1,16 @@
 import { Injectable, inject } from '@angular/core';
 import { Firestore } from '@angular/fire/firestore';
 import { collection, doc, addDoc, updateDoc, deleteDoc, getDoc, getDocs, query, where, limit, orderBy, Timestamp, writeBatch, increment, onSnapshot } from 'firebase/firestore';
-import { Observable, from, map } from 'rxjs';
+import { Observable, from, map, switchMap, tap } from 'rxjs';
 import { Task, TaskStatus } from '../models/task.model';
+import { ObjectiveCalculationService } from './objective-calculation.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class TaskService {
   private firestore = inject(Firestore);
+  private objectiveCalculationService = inject(ObjectiveCalculationService);
   private readonly collectionName = 'tasks';
 
   /**
@@ -149,17 +151,67 @@ export class TaskService {
 
   /**
    * Update task status (for drag & drop in Kanban)
+   * Triggers objective recalculation if task is linked to an objective
    */
   updateTaskStatus(taskId: string, newStatus: TaskStatus): Observable<void> {
     const taskRef = doc(this.firestore, `${this.collectionName}/${taskId}`);
-    return from(updateDoc(taskRef, { status: newStatus }));
+    
+    // First get the current task to check old status and goal_link
+    return from(getDoc(taskRef)).pipe(
+      switchMap(docSnap => {
+        const oldTask = docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } as Task : null;
+        const oldStatus = oldTask?.status || 'todo';
+        
+        // Update the task status
+        return from(updateDoc(taskRef, { status: newStatus })).pipe(
+          tap(() => {
+            // After status update, trigger objective recalculation if needed
+            // Only if status changed to or from 'done' and task has goal_link
+            if ((newStatus === 'done' || oldStatus === 'done') && oldTask?.goal_link) {
+              console.log(`Task status changed: ${oldStatus} → ${newStatus}. Triggering objective recalculation.`);
+              this.objectiveCalculationService.onTaskStatusChanged(taskId, newStatus, oldStatus).subscribe({
+                next: () => console.log('Objective recalculation completed'),
+                error: (error) => console.error('Error recalculating objective:', error)
+              });
+            }
+          })
+        );
+      })
+    );
   }
 
   /**
    * Update task
+   * Triggers objective recalculation if status changed to/from 'done' and task has goal_link
    */
   updateTask(taskId: string, updates: Partial<Task>): Observable<void> {
     const taskRef = doc(this.firestore, `${this.collectionName}/${taskId}`);
+    
+    // If status is being updated, check for objective recalculation
+    if (updates.status) {
+      const newStatus = updates.status;
+      return from(getDoc(taskRef)).pipe(
+        switchMap(docSnap => {
+          const oldTask = docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } as Task : null;
+          const oldStatus = oldTask?.status || 'todo';
+          
+          return from(updateDoc(taskRef, updates)).pipe(
+            tap(() => {
+              // Trigger objective recalculation if needed
+              if ((newStatus === 'done' || oldStatus === 'done') && oldTask?.goal_link) {
+                console.log(`Task updated with status change: ${oldStatus} → ${newStatus}. Triggering objective recalculation.`);
+                this.objectiveCalculationService.onTaskStatusChanged(taskId, newStatus, oldStatus).subscribe({
+                  next: () => console.log('Objective recalculation completed'),
+                  error: (error) => console.error('Error recalculating objective:', error)
+                });
+              }
+            })
+          );
+        })
+      );
+    }
+    
+    // For non-status updates, just update directly
     return from(updateDoc(taskRef, updates));
   }
 

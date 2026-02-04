@@ -1,0 +1,298 @@
+<div class="min-h-screen bg-gray-50">
+  <!-- Header -->
+  <div class="bg-white shadow-sm border-b border-gray-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-4">
+          <button (click)="goBack()"
+            class="text-gray-600 hover:text-gray-900 p-2 rounded-lg hover:bg-gray-100 transition">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+          </button>
+          <div>
+            <h1 class="text-2xl font-bold text-gray-900">Strategic Objectives</h1>
+            <p class="text-sm text-gray-600">{{ projectId() ? 'Project Objectives' : 'Global Objectives' }}</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-3">
+          <button (click)="goToStrategy()"
+            class="px-4 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 border border-blue-200 rounded-lg transition">
+            <span class="inline-flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+              </svg>
+              Strategy Dashboard
+            </span>
+          </button>
+          <button *ngIf="canManageObjectives()" (click)="openCreateModal()"
+            class="px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition">
+            + New Objective
+          </button>
+          <span *ngIf="!canManageObjectives()" class="text-xs text-gray-500 px-3 py-2 bg-gray-100 rounded-lg">
+            View Only (Admin/Director can manage)
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <!-- Financial -->
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-sm font-medium text-gray-600">Financial</h3>
+          <span class="px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-700 rounded-full">
+            {{ stats().financial.count }}
+          </span>
+        </div>
+        <p class="text-2xl font-bold text-gray-900">
+          {{ stats().financial.avgProgress }}%
+        </p>
+        <p class="text-xs text-gray-500 mt-1">Average Progress</p>
+      </div>
+
+      <!-- Customer -->
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-sm font-medium text-gray-600">Customer</h3>
+          <span class="px-2 py-1 text-xs font-semibold bg-purple-100 text-purple-700 rounded-full">
+            {{ stats().customer.count }}
+          </span>
+        </div>
+        <p class="text-2xl font-bold text-gray-900">
+          {{ stats().customer.avgProgress }}%
+        </p>
+        <p class="text-xs text-gray-500 mt-1">Average Progress</p>
+      </div>
+
+      <!-- Internal Process -->
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-sm font-medium text-gray-600">Internal Process</h3>
+          <span class="px-2 py-1 text-xs font-semibold bg-orange-100 text-orange-700 rounded-full">
+            {{ stats().internal.count }}
+          </span>
+        </div>
+        <p class="text-2xl font-bold text-gray-900">
+          {{ stats().internal.avgProgress }}%
+        </p>
+        <p class="text-xs text-gray-500 mt-1">Average Progress</p>
+      </div>
+
+      <!-- Learning & Growth -->
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-sm font-medium text-gray-600">Learning & Growth</h3>
+          <span class="px-2 py-1 text-xs font-semibold bg-green-100 text-green-700 rounded-full">
+            {{ stats().learning.count }}
+          </span>
+        </div>
+        <p class="text-2xl font-bold text-gray-900">
+          {{ stats().learning.avgProgress }}%
+        </p>
+        <p class="text-xs text-gray-500 mt-1">Average Progress</p>
+      </div>
+    </div>
+
+    <!-- Filter Tabs -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-1 mb-6 inline-flex gap-1">
+      <button (click)="filterByType('all')"
+        [class]="selectedType() === 'all' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'"
+        class="px-4 py-2 text-sm font-medium rounded-lg transition">
+        All
+      </button>
+      <button (click)="filterByType('financial')"
+        [class]="selectedType() === 'financial' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'"
+        class="px-4 py-2 text-sm font-medium rounded-lg transition">
+        Financial
+      </button>
+      <button (click)="filterByType('customer')"
+        [class]="selectedType() === 'customer' ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-gray-100'"
+        class="px-4 py-2 text-sm font-medium rounded-lg transition">
+        Customer
+      </button>
+      <button (click)="filterByType('internal')"
+        [class]="selectedType() === 'internal' ? 'bg-orange-100 text-orange-700' : 'text-gray-600 hover:bg-gray-100'"
+        class="px-4 py-2 text-sm font-medium rounded-lg transition">
+        Internal
+      </button>
+      <button (click)="filterByType('learning')"
+        [class]="selectedType() === 'learning' ? 'bg-green-100 text-green-700' : 'text-gray-600 hover:bg-gray-100'"
+        class="px-4 py-2 text-sm font-medium rounded-lg transition">
+        Learning
+      </button>
+    </div>
+
+    <!-- Objectives List -->
+    <div *ngIf="!loading()" class="space-y-4">
+      <div *ngFor="let objective of filteredObjectives()"
+        class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition">
+        <div class="flex items-start justify-between mb-4">
+          <div class="flex-1">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="px-2 py-1 text-xs font-semibold rounded-full" [class]="getTypeColor(objective.type)">
+                {{ getTypeLabel(objective.type) }}
+              </span>
+              <span class="px-2 py-1 text-xs font-semibold rounded-full" [class]="getStatusColor(objective.status)">
+                {{ objective.status === 'on_track' ? 'On Track' : objective.status === 'at_risk' ? 'At Risk' : 'Behind' }}
+              </span>
+            </div>
+            <h3 class="text-lg font-semibold text-gray-900 mb-1">{{ objective.title }}</h3>
+            <p *ngIf="objective.description" class="text-sm text-gray-600">{{ objective.description }}</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button *ngIf="canManageObjectives()" (click)="recalculateObjective(objective.id)"
+              class="text-gray-600 hover:text-blue-600 p-2 rounded-lg hover:bg-blue-50 transition"
+              title="Recalculate Progress">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+              </svg>
+            </button>
+            <button *ngIf="canManageObjectives()" (click)="openEditModal(objective)"
+              class="text-gray-600 hover:text-blue-600 p-2 rounded-lg hover:bg-blue-50 transition">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+              </svg>
+            </button>
+            <button *ngIf="canManageObjectives()" (click)="deleteObjective(objective.id)"
+              class="text-gray-600 hover:text-red-600 p-2 rounded-lg hover:bg-red-50 transition">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="mb-4">
+          <div class="flex items-center justify-between text-sm mb-1">
+            <span class="text-gray-600">Overall Progress</span>
+            <span class="font-semibold text-gray-900">{{ objective.progress_percent.toFixed(1) }}%</span>
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-3">
+            <div class="h-3 rounded-full transition-all"
+              [style.width.%]="objective.progress_percent"
+              [class]="objective.status === 'on_track' ? 'bg-green-500' : objective.status === 'at_risk' ? 'bg-yellow-500' : 'bg-red-500'"></div>
+          </div>
+        </div>
+
+        <!-- Key Results -->
+        <div class="space-y-2">
+          <h4 class="text-sm font-semibold text-gray-700 mb-2">Key Results ({{ objective.key_results.length }})</h4>
+          <div *ngFor="let kr of objective.key_results" class="bg-gray-50 rounded-lg p-3">
+            
+            <!-- Metric Type - Editable for Admin/Director -->
+            <div *ngIf="kr.type === 'metric'" class="space-y-2">
+              <div class="flex items-start justify-between mb-2">
+                <div class="flex-1">
+                  <h5 class="text-sm font-medium text-gray-900">{{ kr.title }}</h5>
+                  <span class="text-xs text-gray-500">
+                    📊 Manual Metric • Weight: {{ kr.weight }}
+                  </span>
+                </div>
+                <span class="text-sm font-semibold text-gray-700">{{ kr.progress.toFixed(0) }}%</span>
+              </div>
+
+              <!-- Quick Edit Current Value (Admin/Director only) -->
+              <div *ngIf="canManageObjectives() && !isEditingMetric(objective.id, kr.id)" 
+                class="flex items-center gap-2">
+                <div class="flex-1 text-xs text-gray-600">
+                  <span class="font-medium">{{ kr.current_value || 0 }}</span> / {{ kr.target_value }} {{ kr.unit }}
+                </div>
+                <button type="button"
+                  (click)="startEditMetric(objective.id, kr.id)"
+                  class="px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50 border border-blue-200 rounded transition">
+                  Update Value
+                </button>
+              </div>
+
+              <!-- Edit Form (inline) -->
+              <div *ngIf="canManageObjectives() && isEditingMetric(objective.id, kr.id)" 
+                class="flex items-center gap-2">
+                <div class="flex-1 flex items-center gap-2">
+                  <input type="number"
+                    #metricInput
+                    [value]="kr.current_value || 0"
+                    class="flex-1 px-2 py-1 text-sm border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    (keyup.enter)="updateMetricValue(objective, kr, +metricInput.value)">
+                  <span class="text-xs text-gray-600">/ {{ kr.target_value }} {{ kr.unit }}</span>
+                </div>
+                <button type="button"
+                  (click)="updateMetricValue(objective, kr, +metricInput.value)"
+                  class="px-2 py-1 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded">
+                  Save
+                </button>
+                <button type="button"
+                  (click)="cancelEditMetric()"
+                  class="px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100 rounded">
+                  Cancel
+                </button>
+              </div>
+
+              <!-- Read-only for Manager/Member -->
+              <div *ngIf="!canManageObjectives()" class="text-xs text-gray-600">
+                <span class="font-medium">{{ kr.current_value || 0 }}</span> / {{ kr.target_value }} {{ kr.unit }}
+              </div>
+
+              <div class="w-full bg-gray-200 rounded-full h-2">
+                <div class="bg-blue-500 h-2 rounded-full transition-all" [style.width.%]="kr.progress"></div>
+              </div>
+            </div>
+
+            <!-- Task-Linked Type - Read-only -->
+            <div *ngIf="kr.type === 'task_linked'" class="space-y-2">
+              <div class="flex items-start justify-between mb-2">
+                <div class="flex-1">
+                  <h5 class="text-sm font-medium text-gray-900">{{ kr.title }}</h5>
+                  <span class="text-xs text-gray-500">
+                    📋 Task-Linked • Weight: {{ kr.weight }}
+                  </span>
+                </div>
+                <span class="text-sm font-semibold text-gray-700">{{ kr.progress.toFixed(0) }}%</span>
+              </div>
+              <div class="text-xs text-gray-600">
+                Auto-calculated from {{ kr.linked_task_ids?.length || 0 }} linked tasks
+              </div>
+              <div class="w-full bg-gray-200 rounded-full h-2">
+                <div class="bg-blue-500 h-2 rounded-full transition-all" [style.width.%]="kr.progress"></div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Empty State -->
+      <div *ngIf="filteredObjectives().length === 0"
+        class="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+        <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <h3 class="text-lg font-semibold text-gray-900 mb-2">No Objectives Yet</h3>
+        <p class="text-gray-600 mb-4">Create your first strategic objective to start tracking progress</p>
+        <button (click)="openCreateModal()"
+          class="px-6 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition">
+          Create Objective
+        </button>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div *ngIf="loading()" class="text-center py-12">
+      <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent"></div>
+      <p class="text-gray-600 mt-4">Loading objectives...</p>
+    </div>
+  </div>
+</div>
+
+<!-- Objective Modal -->
+<app-objective-modal
+  [isOpen]="isModalOpen()"
+  [projectId]="projectId()"
+  [objective]="selectedObjective()"
+  (close)="closeModal()"
+  (saved)="onObjectiveSaved()">
+</app-objective-modal>

@@ -1,0 +1,110 @@
+<div class="min-h-screen bg-gray-50">
+  <!-- Header -->
+  <div class="bg-white shadow-sm border-b border-gray-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-4">
+          <button (click)="goBack()"
+            class="text-gray-600 hover:text-gray-900 p-2 rounded-lg hover:bg-gray-100 transition">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+          </button>
+          <div>
+            <h1 class="text-2xl font-bold text-gray-900">Strategy Dashboard</h1>
+            <p class="text-sm text-gray-600">BSC/OKR Performance Overview</p>
+          </div>
+        </div>
+        <button (click)="goToObjectives()"
+          class="px-4 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 border border-blue-200 rounded-lg transition">
+          Manage Objectives
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <!-- Radar Chart -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+      <h2 class="text-lg font-semibold text-gray-900 mb-4">Balanced Scorecard Overview</h2>
+      <div class="relative h-96">
+        <canvas #radarChart></canvas>
+      </div>
+    </div>
+
+    <!-- Objectives Tree View -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <h2 class="text-lg font-semibold text-gray-900 mb-4">Objectives Hierarchy</h2>
+      
+      <div *ngIf="!loading()" class="space-y-3">
+        <div *ngFor="let objective of objectives()" class="border border-gray-200 rounded-lg">
+          <button (click)="selectObjective(objective)"
+            class="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition">
+            <div class="flex-1">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="px-2 py-1 text-xs font-semibold rounded-full"
+                  [class]="objective.type === 'financial' ? 'bg-blue-100 text-blue-700' :
+                           objective.type === 'customer' ? 'bg-purple-100 text-purple-700' :
+                           objective.type === 'internal' ? 'bg-orange-100 text-orange-700' :
+                           'bg-green-100 text-green-700'">
+                  {{ objective.type === 'financial' ? 'Financial' :
+                     objective.type === 'customer' ? 'Customer' :
+                     objective.type === 'internal' ? 'Internal' :
+                     'Learning' }}
+                </span>
+                <span class="text-sm font-medium text-gray-900">{{ objective.title }}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="flex-1 bg-gray-200 rounded-full h-2">
+                  <div class="bg-blue-500 h-2 rounded-full" [style.width.%]="objective.progress_percent"></div>
+                </div>
+                <span class="text-sm font-semibold text-gray-700">{{ objective.progress_percent.toFixed(0) }}%</span>
+              </div>
+            </div>
+            <svg class="w-5 h-5 text-gray-400 transition-transform"
+              [class.rotate-180]="selectedObjective() === objective"
+              fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            </svg>
+          </button>
+
+          <!-- Key Results (Expandable) -->
+          <div *ngIf="selectedObjective() === objective" class="px-4 pb-4 space-y-2">
+            <div *ngFor="let kr of objective.key_results" class="ml-6 pl-4 border-l-2 border-gray-300 py-2">
+              <div class="flex items-start justify-between mb-1">
+                <div class="flex-1">
+                  <h4 class="text-sm font-medium text-gray-900">{{ kr.title }}</h4>
+                  <span class="text-xs text-gray-500">
+                    {{ kr.type === 'metric' ? '📊 Manual Metric' : '🔗 Task-Linked' }} • Weight: {{ kr.weight }}
+                  </span>
+                </div>
+                <span class="text-sm font-semibold text-gray-700">{{ kr.progress.toFixed(0) }}%</span>
+              </div>
+              <div class="w-full bg-gray-200 rounded-full h-1.5">
+                <div class="bg-blue-500 h-1.5 rounded-full" [style.width.%]="kr.progress"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      <div *ngIf="loading()" class="text-center py-8">
+        <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-600 border-t-transparent"></div>
+        <p class="text-gray-600 mt-2">Loading strategy data...</p>
+      </div>
+
+      <!-- Empty State -->
+      <div *ngIf="!loading() && objectives().length === 0" class="text-center py-8">
+        <svg class="w-12 h-12 mx-auto text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+        </svg>
+        <p class="text-gray-600 mb-3">No objectives to display</p>
+        <button (click)="goToObjectives()"
+          class="px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition">
+          Create Objectives
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

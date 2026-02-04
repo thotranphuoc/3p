@@ -5,8 +5,10 @@ import { TaskService } from '../../services/task.service';
 import { AuthService } from '../../services/auth.service';
 import { ProjectService } from '../../services/project.service';
 import { UserService } from '../../services/user.service';
+import { ObjectiveService } from '../../services/objective.service';
 import { Task, TaskStatus } from '../../models/task.model';
 import { User as AppUser } from '../../models/user.model';
+import { Objective, KeyResult } from '../../models/objective.model';
 import { SubtaskListComponent } from '../subtask-list/subtask-list.component';
 import { SubtaskModalComponent } from '../subtask-modal/subtask-modal.component';
 import { Subtask } from '../../models/subtask.model';
@@ -31,12 +33,60 @@ export class TaskModalComponent implements OnInit, OnChanges {
   private authService = inject(AuthService);
   private projectService = inject(ProjectService);
   private userService = inject(UserService);
+  private objectiveService = inject(ObjectiveService);
 
   formData = signal({
     title: '',
     description: '',
     status: 'todo' as TaskStatus,
     assignees_preview: [] as string[],
+  });
+  
+  // BSC/OKR Goal Linking
+  availableObjectives = signal<Objective[]>([]);
+  selectedObjectiveId = signal<string | null>(null);
+  selectedKeyResultId = signal<string | null>(null);
+  contributionWeight = signal<number>(1);
+  showObjectiveDropdown = signal<boolean>(false);
+  
+  // Computed: Available key results from selected objective
+  availableKeyResults = computed(() => {
+    const objectiveId = this.selectedObjectiveId();
+    if (!objectiveId) return [];
+    const objective = this.availableObjectives().find(o => o.id === objectiveId);
+    return objective?.key_results || [];
+  });
+  
+  // Computed: Selected objective data
+  selectedObjectiveData = computed(() => {
+    const objectiveId = this.selectedObjectiveId();
+    if (!objectiveId) return null;
+    return this.availableObjectives().find(o => o.id === objectiveId) || null;
+  });
+  
+  // Computed: Selected key result data
+  selectedKeyResultData = computed(() => {
+    const krId = this.selectedKeyResultId();
+    if (!krId) return null;
+    return this.availableKeyResults().find(kr => kr.id === krId) || null;
+  });
+  
+  // Computed: Check if user can link to objectives (Manager or higher)
+  canLinkObjectives = computed(() => {
+    const user = this.authService.getCurrentUser();
+    if (!user) return false;
+    const profile = this.authService.currentUserProfile();
+    return profile?.role === 'admin' || profile?.role === 'director' || profile?.role === 'manager';
+  });
+  
+  // Computed: Project objectives (filtered)
+  projectObjectives = computed(() => {
+    return this.availableObjectives().filter(o => o.projectId === this.projectId);
+  });
+  
+  // Computed: Global objectives (filtered)
+  globalObjectives = computed(() => {
+    return this.availableObjectives().filter(o => o.projectId === 'global');
   });
 
   loading = signal<boolean>(false);
@@ -73,6 +123,7 @@ export class TaskModalComponent implements OnInit, OnChanges {
 
   ngOnInit(): void {
     this.loadProjectMembers();
+    this.loadObjectives();
     this.populateForm();
   }
 
@@ -84,7 +135,21 @@ export class TaskModalComponent implements OnInit, OnChanges {
     }
     if (changes['projectId'] && this.projectId) {
       this.loadProjectMembers();
+      this.loadObjectives();
     }
+  }
+
+  private loadObjectives(): void {
+    if (!this.projectId) return;
+    
+    this.objectiveService.getAllAvailableObjectives(this.projectId).subscribe({
+      next: (objectives) => {
+        this.availableObjectives.set(objectives);
+      },
+      error: (error) => {
+        console.error('Error loading objectives:', error);
+      }
+    });
   }
 
   private loadProjectMembers(): void {
@@ -119,6 +184,15 @@ export class TaskModalComponent implements OnInit, OnChanges {
         assignees_preview: [...this.task.assignees_preview],
       });
       this.selectedAssignees.set([...this.task.assignees_preview]);
+      
+      // Populate goal link if exists
+      if (this.task.goal_link) {
+        this.selectedObjectiveId.set(this.task.goal_link.objectiveId);
+        this.selectedKeyResultId.set(this.task.goal_link.keyResultId);
+        this.contributionWeight.set(this.task.goal_link.contribution_weight || 1);
+      } else {
+        this.clearGoalLink();
+      }
     } else {
       // Create mode - use default status
       this.formData.set({
@@ -128,12 +202,19 @@ export class TaskModalComponent implements OnInit, OnChanges {
         assignees_preview: [],
       });
       this.selectedAssignees.set([]);
+      this.clearGoalLink();
     }
     this.assigneeSearchTerm.set('');
     this.showAssigneeDropdown.set(false);
     this.newComment.set('');
     // Clear error when form is repopulated
     this.error.set(null);
+  }
+  
+  private clearGoalLink(): void {
+    this.selectedObjectiveId.set(null);
+    this.selectedKeyResultId.set(null);
+    this.contributionWeight.set(1);
   }
 
   onSubmit(): void {
@@ -148,6 +229,13 @@ export class TaskModalComponent implements OnInit, OnChanges {
     // Get selected assignees (limit to 3 as per spec)
     const assigneesArray = this.selectedAssignees().slice(0, 3);
 
+    // Build goal_link if objective and key result are selected
+    const goalLink = this.selectedObjectiveId() && this.selectedKeyResultId() ? {
+      objectiveId: this.selectedObjectiveId()!,
+      keyResultId: this.selectedKeyResultId()!,
+      contribution_weight: this.contributionWeight(),
+    } : undefined;
+
     if (this.task) {
       // Update existing task
       this.taskService.updateTask(this.task.id, {
@@ -155,6 +243,7 @@ export class TaskModalComponent implements OnInit, OnChanges {
         description: this.formData().description,
         status: this.formData().status,
         assignees_preview: assigneesArray,
+        goal_link: goalLink,
       }).subscribe({
         next: () => {
           this.loading.set(false);
@@ -176,6 +265,7 @@ export class TaskModalComponent implements OnInit, OnChanges {
         description: this.formData().description,
         status: this.formData().status,
         assignees_preview: assigneesArray,
+        goal_link: goalLink,
         aggregates: {
           total_subtasks: 0,
           completed_subtasks: 0,
@@ -213,10 +303,31 @@ export class TaskModalComponent implements OnInit, OnChanges {
     this.selectedAssignees.set([]);
     this.assigneeSearchTerm.set('');
     this.showAssigneeDropdown.set(false);
+    this.clearGoalLink();
+    this.showObjectiveDropdown.set(false);
     this.newComment.set('');
     this.showComments.set(false);
     this.error.set(null);
     this.close.emit();
+  }
+  
+  // Goal Link Methods
+  selectObjective(objectiveId: string): void {
+    this.selectedObjectiveId.set(objectiveId);
+    // Reset key result when objective changes
+    this.selectedKeyResultId.set(null);
+  }
+  
+  selectKeyResult(keyResultId: string): void {
+    this.selectedKeyResultId.set(keyResultId);
+  }
+  
+  removeGoalLink(): void {
+    this.clearGoalLink();
+  }
+  
+  updateContributionWeight(value: number): void {
+    this.contributionWeight.set(Math.max(1, Math.min(10, value)));
   }
 
   toggleAssignee(userId: string): void {

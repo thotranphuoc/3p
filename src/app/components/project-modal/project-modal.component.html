@@ -1,0 +1,252 @@
+<div *ngIf="isOpen" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+     (click)="closeModal()">
+  <div class="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+       (click)="$event.stopPropagation()">
+    
+    <!-- Header -->
+    <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-xl z-10">
+      <h2 class="text-xl font-bold text-gray-900">
+        {{ project ? 'Edit' : 'Create' }} Project
+      </h2>
+      <p class="text-sm text-gray-600 mt-1">Manage project details, team, timeline, and budget</p>
+    </div>
+
+    <!-- Tabs -->
+    <div class="sticky top-[73px] bg-white border-b border-gray-200 px-6 z-10">
+      <div class="flex gap-4">
+        <button type="button"
+          (click)="currentTab.set('basic')"
+          [class]="currentTab() === 'basic' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'"
+          class="px-4 py-3 text-sm font-medium border-b-2 transition">
+          Basic Info
+        </button>
+        <button type="button"
+          (click)="currentTab.set('team')"
+          [class]="currentTab() === 'team' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'"
+          class="px-4 py-3 text-sm font-medium border-b-2 transition">
+          Team & Budget
+        </button>
+        <button type="button"
+          (click)="currentTab.set('details')"
+          [class]="currentTab() === 'details' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'"
+          class="px-4 py-3 text-sm font-medium border-b-2 transition">
+          Details & Scope
+        </button>
+      </div>
+    </div>
+
+    <!-- Form Content -->
+    <div class="px-6 py-4">
+      
+      <!-- Tab 1: Basic Info -->
+      <div *ngIf="currentTab() === 'basic'" class="space-y-4">
+        <!-- Project Name -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">
+            Project Name <span class="text-red-500">*</span>
+          </label>
+          <input type="text"
+            [value]="name()"
+            (input)="name.set($any($event.target).value)"
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="e.g., Website Redesign 2026">
+        </div>
+
+        <!-- Client Information -->
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Client Name</label>
+            <input type="text"
+              [value]="client_name()"
+              (input)="client_name.set($any($event.target).value)"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="e.g., ABC Corporation">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Client Contact</label>
+            <input type="text"
+              [value]="client_contact()"
+              (input)="client_contact.set($any($event.target).value)"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="email@example.com or +84...">
+          </div>
+        </div>
+
+        <!-- Timeline -->
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+            <input type="date"
+              [value]="start_date()"
+              (input)="start_date.set($any($event.target).value)"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+            <input type="date"
+              [value]="end_date()"
+              (input)="end_date.set($any($event.target).value)"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+        </div>
+
+        <!-- Status -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Project Status</label>
+          <select
+            [value]="status()"
+            (change)="status.set($any($event.target).value)"
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="planning">📋 Planning</option>
+            <option value="in_progress">🚀 In Progress</option>
+            <option value="on_hold">⏸️ On Hold</option>
+            <option value="completed">✅ Completed</option>
+            <option value="cancelled">❌ Cancelled</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Tab 2: Team & Budget -->
+      <div *ngIf="currentTab() === 'team'" class="space-y-4">
+        <!-- Project Manager -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Project Manager (PM)</label>
+          <select
+            [value]="pm_id()"
+            (change)="pm_id.set($any($event.target).value)"
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">-- Select PM --</option>
+            <option *ngFor="let user of availableUsers()" [value]="user.uid">
+              {{ user.displayName || user.email }} ({{ user.role }})
+            </option>
+          </select>
+        </div>
+
+        <!-- Team Members -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Team Members</label>
+          <div class="border border-gray-300 rounded-lg p-3 max-h-48 overflow-y-auto">
+            <div *ngFor="let user of availableUsers()" class="flex items-center gap-3 py-2 hover:bg-gray-50 px-2 rounded">
+              <input type="checkbox"
+                [checked]="isMemberSelected(user.uid)"
+                (change)="toggleMember(user.uid)"
+                class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+              <div class="flex-1">
+                <div class="text-sm font-medium text-gray-900">{{ user.displayName || 'No name' }}</div>
+                <div class="text-xs text-gray-500">{{ user.email }}</div>
+              </div>
+              <span class="px-2 py-0.5 text-xs font-semibold rounded-full"
+                [class]="user.role === 'admin' ? 'bg-red-100 text-red-700' :
+                         user.role === 'director' ? 'bg-orange-100 text-orange-700' :
+                         user.role === 'manager' ? 'bg-purple-100 text-purple-700' :
+                         'bg-blue-100 text-blue-700'">
+                {{ user.role }}
+              </span>
+            </div>
+          </div>
+          <p class="text-xs text-gray-500 mt-1">
+            Selected: {{ selectedMemberIds().length }} members
+          </p>
+        </div>
+
+        <!-- Budget -->
+        <div class="grid grid-cols-3 gap-4">
+          <div class="col-span-2">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Budget</label>
+            <input type="number"
+              [value]="budget()"
+              (input)="budget.set(+$any($event.target).value)"
+              min="0"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="0">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Currency</label>
+            <select
+              [value]="currency()"
+              (change)="currency.set($any($event.target).value)"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="USD">USD ($)</option>
+              <option value="VND">VND (₫)</option>
+              <option value="EUR">EUR (€)</option>
+              <option value="GBP">GBP (£)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 3: Details & Scope -->
+      <div *ngIf="currentTab() === 'details'" class="space-y-4">
+        <!-- Description -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Project Description</label>
+          <textarea
+            [value]="description()"
+            (input)="description.set($any($event.target).value)"
+            rows="3"
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Brief description of the project..."></textarea>
+        </div>
+
+        <!-- Strategic Objectives -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Strategic Objectives</label>
+          <textarea
+            [value]="objectives()"
+            (input)="objectives.set($any($event.target).value)"
+            rows="3"
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Key objectives and goals for this project..."></textarea>
+        </div>
+
+        <!-- Project Scope -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Project Scope</label>
+          <textarea
+            [value]="scope()"
+            (input)="scope.set($any($event.target).value)"
+            rows="3"
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="What is included in this project? What are the boundaries?"></textarea>
+        </div>
+
+        <!-- Deliverables -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Key Deliverables</label>
+          <textarea
+            [value]="deliverables()"
+            (input)="deliverables.set($any($event.target).value)"
+            rows="3"
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="List key deliverables (e.g., Design mockups, Backend API, Mobile app...)"></textarea>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 rounded-b-xl">
+      <div class="flex items-center justify-between">
+        <div class="text-xs text-gray-600">
+          <span class="font-medium">{{ selectedMemberIds().length }}</span> team members selected
+        </div>
+        <div class="flex gap-3">
+          <button type="button"
+            (click)="closeModal()"
+            [disabled]="saving()"
+            class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50">
+            Cancel
+          </button>
+          <button type="button"
+            (click)="onSave()"
+            [disabled]="saving() || !name().trim()"
+            class="px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 rounded-lg">
+            <span *ngIf="!saving()">{{ project ? 'Update' : 'Create' }} Project</span>
+            <span *ngIf="saving()">Saving...</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

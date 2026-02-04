@@ -28,6 +28,14 @@ export class ProfileComponent implements OnInit {
   photoURL = signal<string>('');
   role = signal<string>('');
 
+  goToObjectives(): void {
+    this.router.navigate(['/objectives']);
+  }
+
+  goToStrategy(): void {
+    this.router.navigate(['/strategy']);
+  }
+
   ngOnInit(): void {
     this.loadProfile();
   }

@@ -26,12 +26,12 @@ export class UsersComponent implements OnInit {
   
   // Search & Filter
   searchTerm = signal<string>('');
-  roleFilter = signal<'all' | 'admin' | 'manager' | 'member'>('all');
+  roleFilter = signal<'all' | 'admin' | 'director' | 'manager' | 'member'>('all');
   
   // Edit Role Modal
   showEditRoleModal = signal<boolean>(false);
   editingUser = signal<AppUser | null>(null);
-  newRole = signal<'admin' | 'manager' | 'member'>('member');
+  newRole = signal<'admin' | 'director' | 'manager' | 'member'>('member');
   savingRole = signal<boolean>(false);
 
   // Computed filtered users
@@ -62,10 +62,19 @@ export class UsersComponent implements OnInit {
     return {
       total: users.length,
       admin: users.filter(u => u.role === 'admin').length,
+      director: users.filter(u => u.role === 'director').length,
       manager: users.filter(u => u.role === 'manager').length,
       member: users.filter(u => u.role === 'member').length,
     };
   });
+
+  goToObjectives(): void {
+    this.router.navigate(['/objectives']);
+  }
+
+  goToStrategy(): void {
+    this.router.navigate(['/strategy']);
+  }
 
   ngOnInit(): void {
     this.checkAdminAccess();
@@ -139,6 +148,8 @@ export class UsersComponent implements OnInit {
     switch (role) {
       case 'admin':
         return 'bg-red-100 text-red-700';
+      case 'director':
+        return 'bg-orange-100 text-orange-700';
       case 'manager':
         return 'bg-purple-100 text-purple-700';
       default:

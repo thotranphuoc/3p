@@ -27,6 +27,24 @@ export class ProjectComponent implements OnInit {
   showSubtaskModal = signal<boolean>(false);
   selectedTaskId = signal<string>('');
 
+  goToObjectives(): void {
+    const projectId = this.projectId();
+    if (projectId) {
+      this.router.navigate(['/objectives'], { queryParams: { projectId } });
+    } else {
+      this.router.navigate(['/objectives']);
+    }
+  }
+
+  goToStrategy(): void {
+    const projectId = this.projectId();
+    if (projectId) {
+      this.router.navigate(['/strategy'], { queryParams: { projectId } });
+    } else {
+      this.router.navigate(['/strategy']);
+    }
+  }
+
   ngOnInit(): void {
     this.route.params.subscribe(params => {
       const id = params['id'];

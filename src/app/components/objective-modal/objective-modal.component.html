@@ -1,0 +1,326 @@
+<div *ngIf="isOpen" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+     (click)="closeModal()">
+  <div class="bg-white rounded-xl shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto"
+       (click)="$event.stopPropagation()">
+    
+    <!-- Header -->
+    <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-xl">
+      <h2 class="text-xl font-bold text-gray-900">
+        {{ objective ? 'Edit' : 'Create' }} Strategic Objective
+      </h2>
+      <p class="text-sm text-gray-600 mt-1">Define objectives and key results (OKRs) for strategic planning</p>
+    </div>
+
+    <!-- Form Content -->
+    <div class="px-6 py-4 space-y-6">
+      
+      <!-- Basic Info Section -->
+      <div>
+        <h3 class="text-sm font-semibold text-gray-900 mb-3">Basic Information</h3>
+        
+        <!-- Title -->
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-1">
+            Objective Title <span class="text-red-500">*</span>
+          </label>
+          <input type="text"
+            [value]="title()"
+            (input)="title.set($any($event.target).value)"
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="e.g., Increase Annual Revenue">
+        </div>
+
+        <!-- Description -->
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+          <textarea
+            [value]="description()"
+            (input)="description.set($any($event.target).value)"
+            rows="3"
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Detailed description of this objective..."></textarea>
+        </div>
+
+        <!-- BSC Quadrant -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">
+            BSC Quadrant <span class="text-red-500">*</span>
+          </label>
+          <select
+            [value]="type()"
+            (change)="type.set($any($event.target).value)"
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="financial">💰 Financial</option>
+            <option value="customer">👥 Customer</option>
+            <option value="internal">⚙️ Internal Process</option>
+            <option value="learning">📚 Learning & Growth</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Key Results Section -->
+      <div>
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <h3 class="text-sm font-semibold text-gray-900">Key Results</h3>
+            <p class="text-xs text-gray-600">Total Weight: {{ getTotalWeight() }}</p>
+          </div>
+          <button type="button"
+            (click)="showAddKR.set(true)"
+            *ngIf="!showAddKR()"
+            class="px-3 py-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-50 border border-blue-200 rounded-lg transition">
+            + Add Key Result
+          </button>
+        </div>
+
+        <!-- Add KR Form -->
+        <div *ngIf="showAddKR()" class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-3">
+          <div class="flex items-start justify-between mb-3">
+            <h4 class="text-sm font-semibold text-gray-900">New Key Result</h4>
+            <button type="button"
+              (click)="showAddKR.set(false)"
+              class="text-gray-400 hover:text-gray-600">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+          </div>
+
+          <div class="space-y-3">
+            <!-- KR Title -->
+            <div>
+              <label class="block text-xs font-medium text-gray-700 mb-1">Title</label>
+              <input type="text"
+                [value]="newKRTitle()"
+                (input)="newKRTitle.set($any($event.target).value)"
+                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="e.g., Launch 3 new products">
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <!-- KR Type -->
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Type</label>
+                <select
+                  [value]="newKRType()"
+                  (change)="newKRType.set($any($event.target).value)"
+                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="metric">Metric (Manual)</option>
+                  <option value="task_linked">Task Linked (Auto)</option>
+                </select>
+              </div>
+
+              <!-- KR Weight -->
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Weight (1-100)</label>
+                <input type="number"
+                  min="1"
+                  max="100"
+                  [value]="newKRWeight()"
+                  (input)="newKRWeight.set(+$any($event.target).value)"
+                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+              </div>
+            </div>
+
+            <!-- Metric-specific fields -->
+            <div *ngIf="newKRType() === 'metric'" class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Target Value</label>
+                <input type="number"
+                  [value]="newKRTargetValue()"
+                  (input)="newKRTargetValue.set(+$any($event.target).value)"
+                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Unit</label>
+                <input type="text"
+                  [value]="newKRUnit()"
+                  (input)="newKRUnit.set($any($event.target).value)"
+                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g., $, %, units">
+              </div>
+            </div>
+
+            <button type="button"
+              (click)="addKeyResult()"
+              [disabled]="!newKRTitle().trim()"
+              class="w-full px-3 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed rounded-lg transition">
+              Add Key Result
+            </button>
+          </div>
+        </div>
+
+        <!-- KR List -->
+        <div class="space-y-2">
+          <div *ngFor="let kr of keyResults(); let i = index"
+            class="bg-gray-50 border border-gray-200 rounded-lg p-3">
+            
+            <!-- Edit Mode -->
+            <div *ngIf="editingKRId() === kr.id" class="space-y-3">
+              <div class="flex items-center justify-between mb-2">
+                <h5 class="text-sm font-semibold text-gray-900">Edit Key Result</h5>
+                <button type="button"
+                  (click)="cancelEditKR()"
+                  class="text-gray-400 hover:text-gray-600">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+                </button>
+              </div>
+
+              <!-- Edit Form -->
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Title</label>
+                <input type="text"
+                  [value]="editKRTitle()"
+                  (input)="editKRTitle.set($any($event.target).value)"
+                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-medium text-gray-700 mb-1">Type</label>
+                  <select
+                    [value]="editKRType()"
+                    (change)="editKRType.set($any($event.target).value)"
+                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="metric">Metric (Manual)</option>
+                    <option value="task_linked">Task Linked (Auto)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-gray-700 mb-1">Weight</label>
+                  <input type="number"
+                    min="1"
+                    max="100"
+                    [value]="editKRWeight()"
+                    (input)="editKRWeight.set(+$any($event.target).value)"
+                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+              </div>
+
+              <div *ngIf="editKRType() === 'metric'" class="space-y-3">
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Current Value</label>
+                    <input type="number"
+                      [value]="editKRCurrentValue()"
+                      (input)="editKRCurrentValue.set(+$any($event.target).value)"
+                      class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Target Value</label>
+                    <input type="number"
+                      [value]="editKRTargetValue()"
+                      (input)="editKRTargetValue.set(+$any($event.target).value)"
+                      class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-gray-700 mb-1">Unit</label>
+                  <input type="text"
+                    [value]="editKRUnit()"
+                    (input)="editKRUnit.set($any($event.target).value)"
+                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g., $, %, units">
+                </div>
+              </div>
+
+              <div class="flex gap-2">
+                <button type="button"
+                  (click)="cancelEditKR()"
+                  class="flex-1 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                  Cancel
+                </button>
+                <button type="button"
+                  (click)="saveEditKR()"
+                  [disabled]="!editKRTitle().trim()"
+                  class="flex-1 px-3 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 rounded-lg">
+                  Save Changes
+                </button>
+              </div>
+            </div>
+
+            <!-- View Mode -->
+            <div *ngIf="editingKRId() !== kr.id">
+              <div class="flex items-start justify-between">
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 mb-1">
+                    <span class="px-2 py-0.5 text-xs font-semibold bg-blue-100 text-blue-700 rounded">
+                      {{ kr.type === 'metric' ? '📊 Metric' : '📋 Tasks' }}
+                    </span>
+                    <span class="text-xs font-medium text-gray-700">Weight: {{ kr.weight }}</span>
+                    <span class="text-xs font-semibold text-gray-900">{{ kr.progress.toFixed(0) }}%</span>
+                  </div>
+                  <div class="text-sm font-medium text-gray-900 mb-1">{{ kr.title }}</div>
+                  <div class="text-xs text-gray-600 mb-2">
+                    <span *ngIf="kr.type === 'metric'">
+                      {{ kr.current_value || 0 }} / {{ kr.target_value }} {{ kr.unit }}
+                    </span>
+                    <span *ngIf="kr.type === 'task_linked'">
+                      Auto-calculated from {{ kr.linked_task_ids?.length || 0 }} linked tasks
+                    </span>
+                  </div>
+                  <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div class="bg-blue-500 h-2 rounded-full transition-all" [style.width.%]="kr.progress"></div>
+                  </div>
+                </div>
+                <div class="flex items-center gap-1 ml-2 flex-shrink-0">
+                  <button type="button"
+                    (click)="startEditKR(kr)"
+                    class="text-gray-400 hover:text-blue-600 p-1 rounded transition"
+                    title="Edit">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                    </svg>
+                  </button>
+                  <button type="button"
+                    (click)="removeKeyResult(kr.id)"
+                    class="text-gray-400 hover:text-red-600 p-1 rounded transition"
+                    title="Delete">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Empty state -->
+          <div *ngIf="keyResults().length === 0 && !showAddKR()"
+            class="text-center py-8 text-sm text-gray-500 border-2 border-dashed border-gray-300 rounded-lg">
+            No key results yet. Click "Add Key Result" to get started.
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 rounded-b-xl">
+      <div class="flex items-center justify-between">
+        <div class="text-xs text-gray-600">
+          <span class="font-medium">{{ keyResults().length }}</span> key results, 
+          <span class="font-medium">{{ getTotalWeight() }}</span> total weight
+        </div>
+        <div class="flex gap-3">
+          <button type="button"
+            (click)="closeModal()"
+            [disabled]="saving()"
+            class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+            Cancel
+          </button>
+          <button type="button"
+            (click)="onSave()"
+            [disabled]="saving() || !title().trim() || keyResults().length === 0"
+            class="px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed rounded-lg transition">
+            <span *ngIf="!saving()">{{ objective ? 'Update' : 'Create' }} Objective</span>
+            <span *ngIf="saving()">Saving...</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

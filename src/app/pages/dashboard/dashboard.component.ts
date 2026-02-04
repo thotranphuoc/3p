@@ -8,11 +8,12 @@ import { AuthService } from '../../services/auth.service';
 import { UserService } from '../../services/user.service';
 import { Project } from '../../models/project.model';
 import { User as AppUser } from '../../models/user.model';
+import { ProjectModalComponent } from '../../components/project-modal/project-modal.component';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, ProjectModalComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
@@ -26,14 +27,9 @@ export class DashboardComponent implements OnInit {
   loading = signal<boolean>(true);
   loggingOut = signal<boolean>(false);
   
-  // Create Project Modal
-  showCreateModal = signal<boolean>(false);
-  newProjectName = signal<string>('');
-  
-  // Edit Project Modal
-  showEditModal = signal<boolean>(false);
+  // Project Modal (Create/Edit)
+  showProjectModal = signal<boolean>(false);
   editingProject = signal<Project | null>(null);
-  editProjectName = signal<string>('');
   
   // Delete Confirmation Modal
   showDeleteModal = signal<boolean>(false);
@@ -49,6 +45,14 @@ export class DashboardComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadProjects();
+  }
+
+  goToObjectives(): void {
+    this.router.navigate(['/objectives']);
+  }
+
+  goToStrategy(): void {
+    this.router.navigate(['/strategy']);
   }
 
   loadProjects(): void {
@@ -104,35 +108,69 @@ export class DashboardComponent implements OnInit {
     }
   }
 
-  async createProject(): Promise<void> {
-    if (!this.newProjectName().trim()) {
-      alert('Please enter a project name');
+
+  openCreateProjectModal(): void {
+    this.editingProject.set(null);
+    this.showProjectModal.set(true);
+  }
+
+  openEditProjectModal(project: Project, event: Event): void {
+    event.stopPropagation();
+    this.editingProject.set(project);
+    this.showProjectModal.set(true);
+  }
+
+  closeProjectModal(): void {
+    this.showProjectModal.set(false);
+    this.editingProject.set(null);
+  }
+
+  async onProjectSaved(projectData: Partial<Project>): Promise<void> {
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser) {
+      alert('You must be logged in');
       return;
     }
 
-    const user = this.authService.getCurrentUser();
-    if (!user) return;
-
     try {
-      const projectId = await firstValueFrom(this.projectService.createProject({
-        name: this.newProjectName(),
-        members: [user.uid],
-        stats: {
-          total_tasks: 0,
-          completed_tasks: 0,
-        }
-      }));
-
-      if (projectId) {
-        this.newProjectName.set('');
-        this.showCreateModal.set(false);
-        this.loadProjects();
-        // Navigate to the new project
-        this.router.navigate(['/project', projectId]);
+      const editing = this.editingProject();
+      
+      // Remove undefined fields (Firestore doesn't accept undefined)
+      const cleanData = Object.fromEntries(
+        Object.entries(projectData).filter(([_, value]) => value !== undefined)
+      ) as Partial<Project>;
+      
+      if (editing) {
+        // Update existing project
+        await firstValueFrom(this.projectService.updateProject(editing.id, {
+          ...cleanData,
+          updated_at: new Date()
+        }));
+        console.log('Project updated:', editing.id);
+      } else {
+        // Create new project
+        const newProject: Omit<Project, 'id'> = {
+          ...cleanData as any,
+          name: cleanData.name || 'Untitled Project',
+          members: cleanData.members || [currentUser.uid],
+          created_by: currentUser.uid,
+          created_at: new Date(),
+          updated_at: new Date(),
+          stats: {
+            total_tasks: 0,
+            completed_tasks: 0,
+          }
+        };
+        
+        const projectId = await firstValueFrom(this.projectService.createProject(newProject));
+        console.log('Project created with ID:', projectId);
       }
+
+      this.closeProjectModal();
+      this.loadProjects();
     } catch (error) {
-      console.error('Error creating project:', error);
-      alert('Failed to create project. Please try again.');
+      console.error('Error saving project:', error);
+      alert('Failed to save project');
     }
   }
 
@@ -158,34 +196,6 @@ export class DashboardComponent implements OnInit {
     }
   }
 
-  // ============ EDIT PROJECT ============
-  openEditModal(project: Project, event: Event): void {
-    event.stopPropagation(); // Prevent opening project
-    this.editingProject.set(project);
-    this.editProjectName.set(project.name);
-    this.showEditModal.set(true);
-  }
-
-  async updateProject(): Promise<void> {
-    const project = this.editingProject();
-    if (!project || !this.editProjectName().trim()) {
-      alert('Please enter a project name');
-      return;
-    }
-
-    try {
-      await firstValueFrom(this.projectService.updateProject(project.id, {
-        name: this.editProjectName()
-      }));
-      
-      this.showEditModal.set(false);
-      this.loadProjects();
-      console.log('[Dashboard] Project updated successfully');
-    } catch (error) {
-      console.error('Error updating project:', error);
-      alert('Failed to update project. Please try again.');
-    }
-  }
 
   // ============ DELETE PROJECT ============
   openDeleteModal(project: Project, event: Event): void {

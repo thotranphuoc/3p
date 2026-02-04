@@ -18,6 +18,13 @@ export interface Task {
   status: TaskStatus;
   assignees_preview: string[]; // Cache first 3 UIDs for UI
   
+  // STRATEGY LINKING (BSC/OKR)
+  goal_link?: {
+    objectiveId: string;
+    keyResultId: string;
+    contribution_weight: number; // Importance of this task to the KR (default 1)
+  };
+  
   // AGGREGATES (Roll-up from Subtasks)
   aggregates: {
     total_subtasks: number;

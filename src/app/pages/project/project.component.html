@@ -5,6 +5,8 @@
       <div class="flex items-center gap-6">
         <h2 class="text-xl font-bold text-blue-600">ProMan</h2>
         <a routerLink="/dashboard" class="text-gray-700 hover:text-blue-600 font-medium">Dashboard</a>
+        <a (click)="goToObjectives()" class="text-gray-700 hover:text-blue-600 font-medium cursor-pointer">Objectives</a>
+        <a (click)="goToStrategy()" class="text-gray-700 hover:text-blue-600 font-medium cursor-pointer">Strategy</a>
         <a routerLink="/profile" class="text-gray-700 hover:text-blue-600 font-medium">Profile</a>
         <a *ngIf="authService.currentUserProfile()?.role === 'admin'" 
            routerLink="/admin/users" 

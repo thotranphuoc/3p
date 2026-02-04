@@ -65,5 +65,33 @@ service cloud.firestore {
       // allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isProjectMember(resource.data.projectId));
       // allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
     }
+
+    // OBJECTIVES COLLECTION (BSC/OKR Strategy Module)
+    match /objectives/{objId} {
+      // Helper: Check if user is admin or director
+      function isAdminOrDirector() {
+        return userDocExists() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') in ['admin', 'director'];
+      }
+      
+      // Helper: Check if user is manager or higher
+      function isManagerOrHigher() {
+        return userDocExists() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') in ['admin', 'director', 'manager'];
+      }
+      
+      // Helper: Check if user is project member
+      function isMemberOfObjectiveProject() {
+        let projectId = resource.data.projectId;
+        return projectId == 'global' || isProjectMember(projectId);
+      }
+      
+      // READ: All authenticated users can read objectives if they're in the project or it's global
+      allow read: if isAuthenticated() && (
+        resource.data.projectId == 'global' || 
+        isProjectMember(resource.data.projectId)
+      );
+      
+      // WRITE (Create/Update/Delete): Only Admin and Director
+      allow create, update, delete: if isAdminOrDirector();
+    }
   }
 }

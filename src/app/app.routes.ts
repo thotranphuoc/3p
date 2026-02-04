@@ -4,6 +4,8 @@ import { LoginComponent } from './pages/login/login.component';
 import { DashboardComponent } from './pages/dashboard/dashboard.component';
 import { ProfileComponent } from './pages/profile/profile.component';
 import { UsersComponent } from './pages/admin/users/users.component';
+import { ObjectivesComponent } from './pages/objectives/objectives.component';
+import { StrategyComponent } from './pages/strategy/strategy.component';
 import { authGuard } from './guards/auth.guard';
 import { adminGuard } from './guards/admin.guard';
 
@@ -28,6 +30,16 @@ export const routes: Routes = [
     canActivate: [authGuard, adminGuard],
   },
   {
+    path: 'objectives',
+    component: ObjectivesComponent,
+    canActivate: [authGuard],
+  },
+  {
+    path: 'strategy',
+    component: StrategyComponent,
+    canActivate: [authGuard],
+  },
+  {
     path: 'project/:id',
     component: ProjectComponent,
     canActivate: [authGuard],
@@ -36,5 +48,9 @@ export const routes: Routes = [
     path: '',
     redirectTo: '/dashboard',
     pathMatch: 'full',
+  },
+  {
+    path: '**',
+    redirectTo: '/dashboard',
   },
 ];
